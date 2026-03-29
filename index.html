@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSU资安院 | 实习互助全景平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', -apple-system, sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .glass-nav { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border-bottom: 1px solid #e2e8f0; }
+        .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: bold; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .hover-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- 核心知识库 (整合自学院资料) ---
+        const MAJOR_CONTENT = {
+            safety: {
+                title: "🛡️ 安全工程 (Safety Engineering)",
+                tags: ["EHS管理", "ISO体系", "风险评估"],
+                points: [
+                    { t: "实习核心任务", c: "掌握ISO14001/45001体系运作，熟悉环评职评、危废管理及标准化内业资料管理。" },
+                    { t: "行业避雷指南", c: "尽量避开传统高危且体系固化的行业。优先考虑新能源、汽车制造、电子半导体等对EHS重视度高、兼容性强的赛道。" },
+                    { t: "简历与面试", c: "避免只罗列课程。采用STAR法则描述实操，例如：参与某项目，负责HAZOP分析，提出具体改进建议并被采纳。" }
+                ],
+                tips: "女生在安全工程领域极具优势，沟通力强、细心负责，特别适合外企EHS管理、甲级安全评价机构咨询顾问等高潜岗位。"
+            },
+            mining: {
+                title: "⛏️ 采矿工程 (Mining Engineering)",
+                tags: ["智能矿山", "三维建模", "自动化调度"],
+                points: [
+                    { t: "一线工艺认知", c: "深入了解凿岩、爆破、通风、提升运输等全套工艺流程，这是所有高级设计的基石。" },
+                    { t: "数字化转型技能", c: "传统采矿正向机械化、智能化迈进。熟练掌握CAD及Dimine/Surpac等三维矿业软件是核心竞争力。" }
+                ],
+                tips: "优先考虑大型国企/央企或国际化矿业公司。若有志于科研，可向矿山设计方案与前沿安全技术（如微震监测）方向深造。"
+            },
+            underground: {
+                title: "🚇 城市地下空间 (Underground Space)",
+                tags: ["盾构施工", "BIM技术", "基坑监测"],
+                points: [
+                    { t: "现场工法观摩", c: "实地观察盾构法、暗挖法或明挖基坑施工，建立三维空间结构概念，学习监测数据的读取与质检把控。" },
+                    { t: "核心工具掌握", c: "BIM技术在地下管线综合、施工碰撞检查中不可或缺，是本专业学生脱颖而出的关键利器。" }
+                ],
+                tips: "基建行业项目制特征明显，工作地点随项目变动。积累一线现场经验后，向项目技术负责人或BIM应用专家转型是清晰的发展路径。"
+            }
+        };
+
+        // --- 预置高质量学术/实习动态 ---
+        const INITIAL_POSTS = [
+            {
+                id: '1',
+                title: "关于新能源汽车热失控预警系统方向的实习与直博建议",
+                major: "safety",
+                author: "hoilis bai",
+                content: "近期在做新能源电池热失控预警与电磁弹射系统相关的项目，并准备以此申请直博（目标港校等）。建议学弟学妹们在找安全工程相关的科研助理或企业实习时，可以将目光聚焦在“软硬结合”的交叉领域（如Jetson Nano硬件开发、多模态预警逻辑等），这比传统的纯制度管理岗在学术申博上更有竞争力。",
+                likes: 24,
+                timestamp: new Date().getTime() - 86400000 * 2
+            },
+            {
+                id: '2',
+                title: "中建某局地下空间专业暑期实习血泪总结",
+                major: "underground",
+                author: "中南22级学长",
+                content: "去了地铁项目部实习了2个月，最大的感受是：一定要带好防晒和水壶！专业方面，书本上的土力学在深基坑现场变得非常具体，建议大家实习时多和现场的安全员、技术员交流，不要只坐在办公室画图，一定要下工地看管片拼装。",
+                likes: 15,
+                timestamp: new Date().getTime() - 86400000 * 5
+            },
+            {
+                id: '3',
+                title: "给找EHS岗位的同学提个醒：行业壁垒真的很厚",
+                major: "safety",
+                author: "校友匿名",
+                content: "秋招刚结束，给大家避个坑。建筑EHS的经验在车企EHS里几乎用不上。如果你未来想去制造业或者新能源，实习千万别去工地。优先找化工、医药、半导体、汽车行业的EHS实习，经验通吃，覆盖面广！",
+                likes: 38,
+                timestamp: new Date().getTime() - 86400000 * 10
+            }
+        ];
+
+        const App = () => {
+            const [view, setView] = useState('guide'); 
+            const [activeMajor, setActiveMajor] = useState('safety');
+            const [posts, setPosts] = useState([]);
+            const [isModalOpen, setIsModalOpen] = useState(false);
+
+            // 初始化或加载本地数据
+            useEffect(() => {
+                const savedPosts = localStorage.getItem('csu_internship_posts');
+                if (savedPosts) {
+                    setPosts(JSON.parse(savedPosts));
+                } else {
+                    setPosts(INITIAL_POSTS);
+                    localStorage.setItem('csu_internship_posts', JSON.stringify(INITIAL_POSTS));
+                }
+            }, []);
+
+            const handlePost = (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const newPost = {
+                    id: Date.now().toString(),
+                    title: formData.get('title'),
+                    major: formData.get('major'),
+                    author: formData.get('author') || 'hoilis bai',
+                    content: formData.get('content'),
+                    likes: 0,
+                    timestamp: new Date().getTime()
+                };
+                const updatedPosts = [newPost, ...posts];
+                setPosts(updatedPosts);
+                localStorage.setItem('csu_internship_posts', JSON.stringify(updatedPosts));
+                setIsModalOpen(false);
+            };
+
+            const handleLike = (id) => {
+                const updatedPosts = posts.map(p => {
+                    if (p.id === id) return { ...p, likes: p.likes + 1 };
+                    return p;
+                });
+                setPosts(updatedPosts);
+                localStorage.setItem('csu_internship_posts', JSON.stringify(updatedPosts));
+            };
+
+            const formatDate = (ts) => {
+                const d = new Date(ts);
+                return `${d.getMonth() + 1}月${d.getDate()}日`;
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col">
+                    {/* 导航栏 */}
+                    <header className="glass-nav sticky top-0 z-50">
+                        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-blue-600 w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md">CSU</div>
+                                <h1 className="text-lg font-bold tracking-wide text-slate-800 hidden sm:block">资安学院实习全景平台</h1>
+                            </div>
+                            <nav className="flex gap-8">
+                                <button onClick={() => setView('guide')} className={`text-sm font-semibold h-16 transition-colors ${view === 'guide' ? 'tab-active' : 'text-slate-500 hover:text-blue-600'}`}>📘 实习百科</button>
+                                <button onClick={() => setView('community')} className={`text-sm font-semibold h-16 transition-colors ${view === 'community' ? 'tab-active' : 'text-slate-500 hover:text-blue-600'}`}>💬 交流社区</button>
+                            </nav>
+                        </div>
+                    </header>
+
+                    {/* 主体内容 */}
+                    <main className="flex-grow max-w-5xl mx-auto w-full px-4 sm:px-6 py-8">
+                        {view === 'guide' ? (
+                            <div className="fade-in space-y-8">
+                                {/* Banner */}
+                                <div className="bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 rounded-3xl p-8 sm:p-12 text-white shadow-xl relative overflow-hidden">
+                                    <div className="relative z-10">
+                                        <h2 className="text-3xl sm:text-4xl font-extrabold mb-4 leading-tight">打破信息壁垒<br/>重构工程人的职场起点</h2>
+                                        <p className="text-blue-100 max-w-2xl text-base sm:text-lg leading-relaxed opacity-90">基于资安学院各专业特色深度定制。纸上得来终觉浅，绝知此事要躬行。在这里，找到属于你的高质量实习突围指南。</p>
+                                    </div>
+                                    <div className="absolute right-0 bottom-0 opacity-10 text-[150px] leading-none select-none translate-x-1/4 translate-y-1/4">⚙️</div>
+                                </div>
+
+                                {/* 专业切换卡片 */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    {Object.keys(MAJOR_CONTENT).map(key => (
+                                        <button 
+                                            key={key} 
+                                            onClick={() => setActiveMajor(key)}
+                                            className={`p-5 rounded-2xl text-left transition-all duration-300 ${activeMajor === key ? 'bg-white shadow-lg ring-2 ring-blue-500 transform scale-[1.02]' : 'bg-slate-100 text-slate-600 hover:bg-white hover:shadow'}`}
+                                        >
+                                            <div className="font-bold text-lg mb-1">{MAJOR_CONTENT[key].title}</div>
+                                            <div className="text-xs opacity-70 mt-2 flex flex-wrap gap-1">
+                                                {MAJOR_CONTENT[key].tags.slice(0, 2).map(t => <span key={t} className="bg-slate-200/50 px-2 py-0.5 rounded">#{t}</span>)}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* 详细内容展示 */}
+                                <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-slate-100 fade-in">
+                                    <h3 className="text-2xl font-bold text-slate-800 mb-8 border-l-4 border-blue-600 pl-4">{MAJOR_CONTENT[activeMajor].title.split(' ')[1]} 专业深度解析</h3>
+                                    <div className="grid md:grid-cols-3 gap-10">
+                                        <div className="md:col-span-2 space-y-8">
+                                            {MAJOR_CONTENT[activeMajor].points.map((p, i) => (
+                                                <div key={i}>
+                                                    <h4 className="font-bold text-lg text-slate-800 mb-2 flex items-center gap-2">
+                                                        <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs flex items-center justify-center font-bold">{i+1}</span>
+                                                        {p.t}
+                                                    </h4>
+                                                    <p className="text-slate-600 leading-relaxed pl-8">{p.c}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 h-fit">
+                                            <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">💡 专家提示</h4>
+                                            <p className="text-slate-600 text-sm leading-relaxed italic">"{MAJOR_CONTENT[activeMajor].tips}"</p>
+                                            <div className="mt-6 pt-6 border-t border-slate-200">
+                                                <div className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">能力标签</div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {MAJOR_CONTENT[activeMajor].tags.map(t => (
+                                                        <span key={t} className="px-3 py-1 bg-white border border-slate-200 text-slate-600 text-xs rounded-full shadow-sm">{t}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="fade-in max-w-3xl mx-auto">
+                                <div className="flex justify-between items-center mb-8">
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-slate-800">互助动态广场</h2>
+                                        <p className="text-sm text-slate-500 mt-1">分享面经、吐槽避坑、寻找科研队友</p>
+                                    </div>
+                                    <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-200 transition-all transform hover:-translate-y-0.5 text-sm flex items-center gap-2">
+                                        ➕ 提笔分享
+                                    </button>
+                                </div>
+                                
+                                <div className="space-y-5">
+                                    {posts.map(post => (
+                                        <div key={post.id} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover-card">
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-700 font-bold text-lg border border-blue-200">
+                                                        {post.author.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-slate-800 leading-snug">{post.title}</h4>
+                                                        <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                                                            <span className="font-medium text-slate-500">{post.author}</span>
+                                                            <span>·</span>
+                                                            <span className="bg-slate-100 px-2 py-0.5 rounded text-[10px] uppercase font-bold text-slate-500">
+                                                                {post.major === 'safety' ? '安全工程' : post.major === 'mining' ? '采矿工程' : '地下空间'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span className="text-[11px] font-medium text-slate-300 bg-slate-50 px-2 py-1 rounded-md">{formatDate(post.timestamp)}</span>
+                                            </div>
+                                            <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap ml-13">{post.content}</p>
+                                            <div className="mt-5 pt-4 border-t border-slate-50 flex gap-4 ml-13">
+                                                <button onClick={() => handleLike(post.id)} className="text-slate-500 text-sm flex items-center gap-1.5 hover:text-blue-600 transition-colors font-medium bg-slate-50 hover:bg-blue-50 px-3 py-1.5 rounded-lg">
+                                                    👍 <span>有用 ({post.likes})</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Footer - 专属申博署名 */}
+                    <footer className="border-t border-slate-200 bg-white mt-12 py-8">
+                        <div className="max-w-5xl mx-auto px-6 text-center">
+                            <p className="text-slate-400 text-sm font-medium">© 2026 CSU 资源与安全工程学院 学术与职业发展支持平台</p>
+                            <p className="text-slate-300 text-xs mt-2">Designed & Developed by <strong className="text-slate-400">hoilis bai</strong></p>
+                        </div>
+                    </footer>
+
+                    {/* 发帖弹窗 */}
+                    {isModalOpen && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm fade-in">
+                            <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 sm:p-8">
+                                <h2 className="text-xl font-bold text-slate-800 mb-6">发布新动态</h2>
+                                <form onSubmit={handlePost} className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">一句话标题</label>
+                                        <input name="title" required placeholder="例如：拿到了某车企EHS的Offer，分享面经" className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">相关专业</label>
+                                            <select name="major" className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm appearance-none">
+                                                <option value="safety">🛡️ 安全工程</option>
+                                                <option value="mining">⛏️ 采矿工程</option>
+                                                <option value="underground">🚇 城市地下空间工程</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">发布署名</label>
+                                            <input name="author" defaultValue="hoilis bai" className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm text-slate-600 font-medium" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">详细内容</label>
+                                        <textarea name="content" required rows="5" placeholder="分享你的干货、见闻或疑问..." className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm custom-scrollbar resize-none" />
+                                    </div>
+                                    <div className="flex gap-3 pt-2">
+                                        <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-colors">取消</button>
+                                        <button type="submit" className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-white shadow-lg shadow-blue-200 transition-colors">发布动态</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
