@@ -4,12 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CSU资安院 | 实习互助全景平台</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -29,7 +26,6 @@
 <body>
     <div id="root"></div>
 
-    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, updateDoc, increment, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
@@ -123,13 +119,21 @@
             const [user, setUser] = useState(null);
             const [db, setDb] = useState(null);
             const [isAdmin, setIsAdmin] = useState(false);
-            const [appId, setAppId] = useState('csu-hub');
+            const [appId, setAppId] = useState('csu-hub-real');
 
             useEffect(() => {
                 if (!window.FB) return;
                 try {
-                    const fbConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { projectId: "demo-csu" };
-                    const id = typeof __app_id !== 'undefined' ? __app_id : 'csu-hub';
+                    // 🌟 你的专属数据库钥匙已经在这里替换好了！ 🌟
+                    const fbConfig = {
+                        apiKey: "AIzaSyDtXgBL8ZbvVe7cxgj4p0DPM4qSximov4M",
+                        authDomain: "csu-internship-hub.firebaseapp.com",
+                        projectId: "csu-internship-hub",
+                        storageBucket: "csu-internship-hub.firebasestorage.app",
+                        messagingSenderId: "465448064487",
+                        appId: "1:465448064487:web:27ad23424f1e8cbc169942"
+                    };
+                    const id = 'csu-internship-hub-real';
                     setAppId(id);
 
                     const app = window.FB.initializeApp(fbConfig);
@@ -138,10 +142,10 @@
                     setDb(firestoreDb);
 
                     const initAuth = async () => {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await window.FB.signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
+                        try {
                             await window.FB.signInAnonymously(auth);
+                        } catch (error) {
+                            console.error("匿名登录失败，请确保在Firebase开启了Anonymous认证", error);
                         }
                     };
                     initAuth();
@@ -150,7 +154,7 @@
                         setUser(u);
                         if(u) loadCloudPosts(firestoreDb, id);
                     });
-                } catch(e) { console.log("非云端环境"); }
+                } catch(e) { console.log("Firebase 初始化失败: ", e); }
             }, []);
 
             const loadCloudPosts = (database, currentAppId) => {
@@ -192,7 +196,6 @@
                     };
                     reader.readAsDataURL(file);
                 } else if (type === 'pdf') {
-                    // 严格限制 PDF 大小在 800KB 以内，防止撑爆单条文档限制
                     if(file.size > 800 * 1024) { 
                         return alert('由于数据库云端限制，PDF附件大小请严格控制在 800KB 以内！\n\n💡 建议：使用WPS或在线工具压缩PDF后再上传。'); 
                     }
@@ -205,7 +208,7 @@
                             name: file.name,
                             data: event.target.result
                         });
-                        setUploadedImg(null); // 上传PDF则清空图片
+                        setUploadedImg(null); 
                     };
                     reader.readAsDataURL(file);
                 }
@@ -222,8 +225,8 @@
                         major: formData.get('major'),
                         author: formData.get('author') || '匿名同学',
                         content: formData.get('content'),
-                        image: uploadedImg, // 如果有图片
-                        pdf: uploadedPdf,   // 如果有PDF
+                        image: uploadedImg, 
+                        pdf: uploadedPdf,   
                         likes: 0,
                         userId: user.uid,
                         comments: [],
@@ -450,15 +453,13 @@
                                     <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
                                         <div className="text-xs font-bold text-slate-500 mb-3">附加文件 (仅支持二选一)</div>
                                         <div className="flex gap-4">
-                                            {/* 图片上传按钮 */}
                                             <label className={`flex-1 flex flex-col items-center justify-center p-4 rounded-lg border-2 border-dashed transition-colors cursor-pointer ${uploadedImg ? 'border-blue-500 bg-blue-50' : 'border-slate-300 hover:bg-white'} ${uploadedPdf ? 'opacity-50 pointer-events-none' : ''}`}>
                                                 <span className="text-xl mb-1">📸</span>
                                                 <span className="text-sm font-semibold text-slate-700">上传图片</span>
-                                                {uploadedImg && <span className="text-xs text-blue-600 mt-1">已选择图片 (可替换)</span>}
+                                                {uploadedImg && <span className="text-xs text-blue-600 mt-1">已选择图片</span>}
                                                 <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'image')} />
                                             </label>
                                             
-                                            {/* PDF上传按钮 */}
                                             <label className={`flex-1 flex flex-col items-center justify-center p-4 rounded-lg border-2 border-dashed transition-colors cursor-pointer ${uploadedPdf ? 'border-indigo-500 bg-indigo-50' : 'border-slate-300 hover:bg-white'} ${uploadedImg ? 'opacity-50 pointer-events-none' : ''}`}>
                                                 <span className="text-xl mb-1">📄</span>
                                                 <span className="text-sm font-semibold text-slate-700">上传PDF文件</span>
@@ -467,7 +468,6 @@
                                                 <input type="file" accept="application/pdf" className="hidden" onChange={(e) => handleFileUpload(e, 'pdf')} />
                                             </label>
                                         </div>
-                                        {/* 清空附件 */}
                                         {(uploadedImg || uploadedPdf) && (
                                             <div className="text-center mt-3">
                                                 <button type="button" onClick={() => {setUploadedImg(null); setUploadedPdf(null);}} className="text-xs text-red-500 hover:underline">取消附件</button>
