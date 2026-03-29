@@ -3,10 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSU资安院 | 实习互助全景平台</title>
+    <title>CSU资安学院 | 实习互助全景平台</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -19,286 +22,487 @@
         .hover-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
         .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .img-preview { max-height: 200px; object-fit: cover; border-radius: 0.5rem; border: 1px solid #e2e8f0; }
+        .comment-section { background-color: #f8fafc; border-radius: 0.75rem; padding: 1rem; margin-top: 1rem; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, updateDoc, increment, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+        window.FB = { initializeApp, getFirestore, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, collection, addDoc, onSnapshot, serverTimestamp, doc, updateDoc, increment, deleteDoc, arrayUnion };
+    </script>
 
-        // --- 核心知识库 (整合自学院资料) ---
-        const MAJOR_CONTENT = {
-            safety: {
-                title: "🛡️ 安全工程 (Safety Engineering)",
-                tags: ["EHS管理", "ISO体系", "风险评估"],
-                points: [
-                    { t: "实习核心任务", c: "掌握ISO14001/45001体系运作，熟悉环评职评、危废管理及标准化内业资料管理。" },
-                    { t: "行业避雷指南", c: "尽量避开传统高危且体系固化的行业。优先考虑新能源、汽车制造、电子半导体等对EHS重视度高、兼容性强的赛道。" },
-                    { t: "简历与面试", c: "避免只罗列课程。采用STAR法则描述实操，例如：参与某项目，负责HAZOP分析，提出具体改进建议并被采纳。" }
-                ],
-                tips: "女生在安全工程领域极具优势，沟通力强、细心负责，特别适合外企EHS管理、甲级安全评价机构咨询顾问等高潜岗位。"
-            },
-            mining: {
-                title: "⛏️ 采矿工程 (Mining Engineering)",
-                tags: ["智能矿山", "三维建模", "自动化调度"],
-                points: [
-                    { t: "一线工艺认知", c: "深入了解凿岩、爆破、通风、提升运输等全套工艺流程，这是所有高级设计的基石。" },
-                    { t: "数字化转型技能", c: "传统采矿正向机械化、智能化迈进。熟练掌握CAD及Dimine/Surpac等三维矿业软件是核心竞争力。" }
-                ],
-                tips: "优先考虑大型国企/央企或国际化矿业公司。若有志于科研，可向矿山设计方案与前沿安全技术（如微震监测）方向深造。"
-            },
-            underground: {
-                title: "🚇 城市地下空间 (Underground Space)",
-                tags: ["盾构施工", "BIM技术", "基坑监测"],
-                points: [
-                    { t: "现场工法观摩", c: "实地观察盾构法、暗挖法或明挖基坑施工，建立三维空间结构概念，学习监测数据的读取与质检把控。" },
-                    { t: "核心工具掌握", c: "BIM技术在地下管线综合、施工碰撞检查中不可或缺，是本专业学生脱颖而出的关键利器。" }
-                ],
-                tips: "基建行业项目制特征明显，工作地点随项目变动。积累一线现场经验后，向项目技术负责人或BIM应用专家转型是清晰的发展路径。"
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const fetchGeminiWithBackoff = async (prompt, systemInstruction, retries = 3) => {
+            const apiKey = ""; 
+            if (!apiKey && typeof __firebase_config === 'undefined') {
+                throw new Error("Missing API Key / 非云端环境");
+            }
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] }
+            };
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const result = await response.json();
+                    return result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                } catch (error) {
+                    if (i === retries - 1) throw error;
+                    await new Promise(res => setTimeout(res, Math.pow(2, i) * 1000));
+                }
             }
         };
 
-        // --- 预置高质量学术/实习动态 ---
-        const INITIAL_POSTS = [
+        // --- 知识库更新全称 ---
+        const ENCYCLOPEDIA = [
             {
-                id: '1',
-                title: "关于新能源汽车热失控预警系统方向的实习与直博建议",
-                major: "safety",
-                author: "hoilis bai",
-                content: "近期在做新能源电池热失控预警与电磁弹射系统相关的项目，并准备以此申请直博（目标港校等）。建议学弟学妹们在找安全工程相关的科研助理或企业实习时，可以将目光聚焦在“软硬结合”的交叉领域（如Jetson Nano硬件开发、多模态预警逻辑等），这比传统的纯制度管理岗在学术申博上更有竞争力。",
-                likes: 24,
-                timestamp: new Date().getTime() - 86400000 * 2
+                id: 'majors',
+                title: '三大专业全景解析',
+                icon: '🎓',
+                isSpecial: true,
+                content: [
+                    { 
+                        title: "🛡️ 安全工程 (Safety Engineering)", 
+                        tags: ["EHS管理", "ISO体系", "风险评估"], 
+                        desc: "不仅仅是排查隐患，更是构建企业防御体系。女生极具优势，沟通力强、细心负责。",
+                        points: "掌握ISO14001/45001体系运作，熟悉环评职评、危废管理。避开传统高危行业，优先考虑新能源、汽车制造、电子半导体等EHS兼容性强的赛道。" 
+                    },
+                    { 
+                        title: "⛏️ 采矿工程 (Mining Engineering)", 
+                        tags: ["智能矿山", "三维建模", "自动化调度"], 
+                        desc: "传统采矿正向机械化、智能化迈进。熟练掌握CAD及Dimine等软件是核心。",
+                        points: "深入了解凿岩、爆破、通风等全套工艺流程。优先考虑大型国企或国际化矿业公司。如有志科研，可向微震监测等前沿安全技术深造。" 
+                    },
+                    { 
+                        title: "🚇 城市地下空间工程 (Underground Space Eng.)", 
+                        tags: ["盾构施工", "BIM技术", "基坑监测"], 
+                        desc: "随着城市化进程，地铁、地下管廊蓬勃发展。高度依托大型工程项目现场。",
+                        points: "实地观察盾构法、明挖基坑施工。BIM技术在地下管线综合、施工碰撞检查中不可或缺。积累现场经验后，向技术负责人或BIM应用专家转型。" 
+                    }
+                ]
             },
             {
-                id: '2',
-                title: "中建某局地下空间专业暑期实习血泪总结",
-                major: "underground",
-                author: "中南22级学长",
-                content: "去了地铁项目部实习了2个月，最大的感受是：一定要带好防晒和水壶！专业方面，书本上的土力学在深基坑现场变得非常具体，建议大家实习时多和现场的安全员、技术员交流，不要只坐在办公室画图，一定要下工地看管片拼装。",
-                likes: 15,
-                timestamp: new Date().getTime() - 86400000 * 5
+                id: 'pitfalls',
+                title: '实习与投递避雷指南',
+                icon: '🚨',
+                sections: [
+                    { h: '五大致命雷区', list: [
+                        '❌ 行业方向不明确，盲目海投：石化重HAZOP工艺安全，建筑重脚手架高空作业，电子厂重危化品管理。',
+                        '❌ 简历堆砌课程，忽视实操：企业宁要查过宿舍消防的，也不要只会背书的。要把课程设计包装成项目。',
+                        '❌ 没提前准备行业知识：面试前必须搜行业典型事故案例，准备特有解决方案。',
+                        '❌ 忽略安全岗特殊要求：必学三大法宝：法规(安法第25条)、预案编制流程、风险评估方法(LEC/HAZOP)。',
+                        '❌ 死等网申，不敢争取内推：坑位少，盯紧校企合作、政府暑期计划及行业社群。'
+                    ]}
+                ]
             },
             {
-                id: '3',
-                title: "给找EHS岗位的同学提个醒：行业壁垒真的很厚",
-                major: "safety",
-                author: "校友匿名",
-                content: "秋招刚结束，给大家避个坑。建筑EHS的经验在车企EHS里几乎用不上。如果你未来想去制造业或者新能源，实习千万别去工地。优先找化工、医药、半导体、汽车行业的EHS实习，经验通吃，覆盖面广！",
-                likes: 38,
-                timestamp: new Date().getTime() - 86400000 * 10
+                id: 'interview',
+                title: '简历与面试通关秘籍',
+                icon: '💬',
+                sections: [
+                    { h: '简历高分写法 (STAR法则)', list: [
+                        '情境+任务+行动+结果。例：“负责储罐区HAZOP分析，发现2处静电隐患并建议增设联锁装置，被采纳并减少整改成本5W+”。',
+                        '加入数据加分：例如“巡检记录让部门隐患整改率从60%提升至85%”。',
+                        '突出工具技能：AutoCAD画疏散图、气体检测仪使用、Python数据分析。'
+                    ]}
+                ]
+            },
+            {
+                id: 'career',
+                title: '八大就业方向全景图',
+                icon: '🧭',
+                sections: [
+                    { h: '核心就业方向', list: [
+                        '🏭 工厂制造业：安全工程师、EHS工程师（建体系）。',
+                        '🏗️ 建筑与施工：施工安全员、安全监理、BIM安全工程师。',
+                        '⛰️ 矿业及地下工程：矿山安全工程师、爆破安全工程师。',
+                        '🔋 新能源（风口）：锂电池防火防爆设计、储能安全评估。'
+                    ]}
+                ]
+            },
+            {
+                id: 'girls',
+                title: '女生专属就业指南',
+                icon: '👩‍🎓',
+                sections: [
+                    { h: '避开偏见，精准拿Offer', list: [
+                        '🌟 企业EHS管理（主场）：外企/大厂/新能源超爱招！主攻体系专员、职业健康管理师。',
+                        '📊 安全咨询/服务（脑力派）：逻辑清晰文笔好，做安全评价师、EHS咨询顾问。优先选甲级评价机构！',
+                        '💻 新兴蓝海赛道：智慧安全工程师（用AI做风险预警）、ESG专员、互联网安全培训师。'
+                    ]}
+                ]
             }
         ];
 
         const App = () => {
             const [view, setView] = useState('guide'); 
-            const [activeMajor, setActiveMajor] = useState('safety');
+            const [activeArticle, setActiveArticle] = useState('majors'); 
             const [posts, setPosts] = useState([]);
             const [isModalOpen, setIsModalOpen] = useState(false);
+            const [uploadedImg, setUploadedImg] = useState(null);
+            
+            // 评论状态
+            const [activeCommentPostId, setActiveCommentPostId] = useState(null);
+            const [commentText, setCommentText] = useState('');
+            const [commentAuthor, setCommentAuthor] = useState('');
 
-            // 初始化或加载本地数据
+            // 系统与权限状态
+            const [user, setUser] = useState(null);
+            const [db, setDb] = useState(null);
+            const [isAdmin, setIsAdmin] = useState(false);
+            const [appId, setAppId] = useState('csu-hub');
+            const contentRef = useRef(null);
+            const [isPolishing, setIsPolishing] = useState(false);
+
             useEffect(() => {
-                const savedPosts = localStorage.getItem('csu_internship_posts');
-                if (savedPosts) {
-                    setPosts(JSON.parse(savedPosts));
-                } else {
-                    setPosts(INITIAL_POSTS);
-                    localStorage.setItem('csu_internship_posts', JSON.stringify(INITIAL_POSTS));
-                }
+                if (!window.FB) return;
+                try {
+                    const fbConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { projectId: "demo-csu" };
+                    const id = typeof __app_id !== 'undefined' ? __app_id : 'csu-hub';
+                    setAppId(id);
+
+                    const app = window.FB.initializeApp(fbConfig);
+                    const auth = window.FB.getAuth(app);
+                    const firestoreDb = window.FB.getFirestore(app);
+                    setDb(firestoreDb);
+
+                    const initAuth = async () => {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await window.FB.signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await window.FB.signInAnonymously(auth);
+                        }
+                    };
+                    initAuth();
+
+                    window.FB.onAuthStateChanged(auth, (u) => {
+                        setUser(u);
+                        if(u) loadCloudPosts(firestoreDb, id);
+                    });
+                } catch(e) { console.log("非云端环境"); }
             }, []);
 
-            const handlePost = (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const newPost = {
-                    id: Date.now().toString(),
-                    title: formData.get('title'),
-                    major: formData.get('major'),
-                    author: formData.get('author') || 'hoilis bai',
-                    content: formData.get('content'),
-                    likes: 0,
-                    timestamp: new Date().getTime()
+            const loadCloudPosts = (database, currentAppId) => {
+                const postsCol = window.FB.collection(database, 'artifacts', currentAppId, 'public', 'data', 'posts');
+                window.FB.onSnapshot(postsCol, (snapshot) => {
+                    const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setPosts(fetchedPosts.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+                }, (err) => console.error(err));
+            };
+
+            const handleAdminLogin = () => {
+                const pwd = prompt("🕵️ 管理员验证，请输入密码：");
+                if (pwd === "csu888") { setIsAdmin(true); alert("✅ 管理员模式已开启！"); } 
+                else if (pwd !== null) { alert("❌ 密码错误"); }
+            };
+
+            const handleImageUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                if(file.size > 5 * 1024 * 1024) { alert('图片不能超过5MB哦！'); return; }
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 800;
+                        let width = img.width, height = img.height;
+                        if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        setUploadedImg(canvas.toDataURL('image/jpeg', 0.6));
+                    }
+                    img.src = event.target.result;
                 };
-                const updatedPosts = [newPost, ...posts];
-                setPosts(updatedPosts);
-                localStorage.setItem('csu_internship_posts', JSON.stringify(updatedPosts));
-                setIsModalOpen(false);
+                reader.readAsDataURL(file);
             };
 
-            const handleLike = (id) => {
-                const updatedPosts = posts.map(p => {
-                    if (p.id === id) return { ...p, likes: p.likes + 1 };
-                    return p;
-                });
-                setPosts(updatedPosts);
-                localStorage.setItem('csu_internship_posts', JSON.stringify(updatedPosts));
+            const handlePost = async (e) => {
+                e.preventDefault();
+                if(!db || !user) { alert("网络连接中，请稍后再试"); return; }
+                const formData = new FormData(e.target);
+                try {
+                    await window.FB.addDoc(window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'posts'), {
+                        title: formData.get('title'),
+                        major: formData.get('major'),
+                        author: formData.get('author') || '匿名同学',
+                        content: formData.get('content'),
+                        image: uploadedImg,
+                        likes: 0,
+                        userId: user.uid, // 核心逻辑：绑定发帖人的匿名ID
+                        comments: [],     // 初始化评论数组
+                        createdAt: window.FB.serverTimestamp()
+                    });
+                    setIsModalOpen(false);
+                    setUploadedImg(null);
+                } catch (error) { console.error("发帖失败", error); }
             };
 
-            const formatDate = (ts) => {
-                const d = new Date(ts);
-                return `${d.getMonth() + 1}月${d.getDate()}日`;
+            const handleLike = async (id) => {
+                if(!db) return;
+                const postRef = window.FB.doc(db, 'artifacts', appId, 'public', 'data', 'posts', id);
+                await window.FB.updateDoc(postRef, { likes: window.FB.increment(1) });
+            };
+
+            // 发送评论
+            const submitComment = async (postId) => {
+                if(!db || !user || !commentText.trim()) return;
+                try {
+                    const postRef = window.FB.doc(db, 'artifacts', appId, 'public', 'data', 'posts', postId);
+                    await window.FB.updateDoc(postRef, {
+                        comments: window.FB.arrayUnion({
+                            id: Date.now().toString(),
+                            author: commentAuthor || '匿名同学',
+                            text: commentText,
+                            userId: user.uid, // 评论者ID
+                            createdAt: new Date().getTime()
+                        })
+                    });
+                    setCommentText('');
+                    setActiveCommentPostId(null);
+                } catch(e) { console.error("评论失败", e); }
+            };
+
+            const handleDelete = async (id) => {
+                if(!db) return;
+                if (confirm("⚠️ 确定要永久删除这条帖子吗？")) {
+                    try { await window.FB.deleteDoc(window.FB.doc(db, 'artifacts', appId, 'public', 'data', 'posts', id)); } 
+                    catch(e) { console.error("删除失败", e); }
+                }
+            };
+
+            const handleAIPolish = async () => {
+                if (!contentRef.current || !contentRef.current.value.trim()) return alert("请先输入需要润色的内容！");
+                setIsPolishing(true);
+                const originalText = contentRef.current.value;
+                const sysPrompt = "将以下实习经历润色为精简的HR面经格式(STAR法则)，突出专业词汇，直接输出结果，如果网络受限就输出原文。";
+                try {
+                    const polishedText = await fetchGeminiWithBackoff(originalText, sysPrompt);
+                    if (polishedText) contentRef.current.value = polishedText;
+                } catch (error) {
+                    alert("💡 温馨提示：国内网络环境下，AI润色接口可能会被拦截。建议在本地环境直接发帖。");
+                } finally { setIsPolishing(false); }
             };
 
             return (
                 <div className="min-h-screen flex flex-col">
-                    {/* 导航栏 */}
                     <header className="glass-nav sticky top-0 z-50">
-                        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-blue-600 w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md">CSU</div>
-                                <h1 className="text-lg font-bold tracking-wide text-slate-800 hidden sm:block">资安学院实习全景平台</h1>
+                        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+                            <div className="flex items-center gap-3 cursor-pointer" onDoubleClick={handleAdminLogin} title="双击进入管理模式">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md ${isAdmin ? 'bg-red-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
+                                    {isAdmin ? '管' : '安'}
+                                </div>
+                                <h1 className="text-lg font-bold tracking-wide text-slate-800">资安实习全景平台</h1>
                             </div>
-                            <nav className="flex gap-8">
-                                <button onClick={() => setView('guide')} className={`text-sm font-semibold h-16 transition-colors ${view === 'guide' ? 'tab-active' : 'text-slate-500 hover:text-blue-600'}`}>📘 实习百科</button>
-                                <button onClick={() => setView('community')} className={`text-sm font-semibold h-16 transition-colors ${view === 'community' ? 'tab-active' : 'text-slate-500 hover:text-blue-600'}`}>💬 交流社区</button>
+                            <nav className="flex gap-2 sm:gap-6">
+                                <button onClick={() => setView('guide')} className={`text-sm font-semibold h-16 px-2 ${view === 'guide' ? 'tab-active' : 'text-slate-500 hover:text-blue-600'}`}>百科指南</button>
+                                <button onClick={() => setView('community')} className={`text-sm font-semibold h-16 px-2 ${view === 'community' ? 'tab-active' : 'text-slate-500 hover:text-blue-600'}`}>社区广场</button>
                             </nav>
                         </div>
                     </header>
 
-                    {/* 主体内容 */}
-                    <main className="flex-grow max-w-5xl mx-auto w-full px-4 sm:px-6 py-8">
+                    <main className="flex-grow max-w-6xl mx-auto w-full px-4 py-8">
                         {view === 'guide' ? (
-                            <div className="fade-in space-y-8">
-                                {/* Banner */}
-                                <div className="bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 rounded-3xl p-8 sm:p-12 text-white shadow-xl relative overflow-hidden">
-                                    <div className="relative z-10">
-                                        <h2 className="text-3xl sm:text-4xl font-extrabold mb-4 leading-tight">打破信息壁垒<br/>重构工程人的职场起点</h2>
-                                        <p className="text-blue-100 max-w-2xl text-base sm:text-lg leading-relaxed opacity-90">基于资安学院各专业特色深度定制。纸上得来终觉浅，绝知此事要躬行。在这里，找到属于你的高质量实习突围指南。</p>
-                                    </div>
-                                    <div className="absolute right-0 bottom-0 opacity-10 text-[150px] leading-none select-none translate-x-1/4 translate-y-1/4">⚙️</div>
-                                </div>
-
-                                {/* 专业切换卡片 */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    {Object.keys(MAJOR_CONTENT).map(key => (
-                                        <button 
-                                            key={key} 
-                                            onClick={() => setActiveMajor(key)}
-                                            className={`p-5 rounded-2xl text-left transition-all duration-300 ${activeMajor === key ? 'bg-white shadow-lg ring-2 ring-blue-500 transform scale-[1.02]' : 'bg-slate-100 text-slate-600 hover:bg-white hover:shadow'}`}
-                                        >
-                                            <div className="font-bold text-lg mb-1">{MAJOR_CONTENT[key].title}</div>
-                                            <div className="text-xs opacity-70 mt-2 flex flex-wrap gap-1">
-                                                {MAJOR_CONTENT[key].tags.slice(0, 2).map(t => <span key={t} className="bg-slate-200/50 px-2 py-0.5 rounded">#{t}</span>)}
-                                            </div>
+                            <div className="fade-in grid md:grid-cols-4 gap-8">
+                                <div className="md:col-span-1 space-y-2">
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-4 mb-4">核心知识库</h3>
+                                    {ENCYCLOPEDIA.map(item => (
+                                        <button key={item.id} onClick={() => setActiveArticle(item.id)} className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${activeArticle === item.id ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}>
+                                            <span className="text-lg">{item.icon}</span> <span className="font-semibold text-sm">{item.title}</span>
                                         </button>
                                     ))}
                                 </div>
-
-                                {/* 详细内容展示 */}
-                                <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-slate-100 fade-in">
-                                    <h3 className="text-2xl font-bold text-slate-800 mb-8 border-l-4 border-blue-600 pl-4">{MAJOR_CONTENT[activeMajor].title.split(' ')[1]} 专业深度解析</h3>
-                                    <div className="grid md:grid-cols-3 gap-10">
-                                        <div className="md:col-span-2 space-y-8">
-                                            {MAJOR_CONTENT[activeMajor].points.map((p, i) => (
-                                                <div key={i}>
-                                                    <h4 className="font-bold text-lg text-slate-800 mb-2 flex items-center gap-2">
-                                                        <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs flex items-center justify-center font-bold">{i+1}</span>
-                                                        {p.t}
-                                                    </h4>
-                                                    <p className="text-slate-600 leading-relaxed pl-8">{p.c}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 h-fit">
-                                            <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">💡 专家提示</h4>
-                                            <p className="text-slate-600 text-sm leading-relaxed italic">"{MAJOR_CONTENT[activeMajor].tips}"</p>
-                                            <div className="mt-6 pt-6 border-t border-slate-200">
-                                                <div className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">能力标签</div>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {MAJOR_CONTENT[activeMajor].tags.map(t => (
-                                                        <span key={t} className="px-3 py-1 bg-white border border-slate-200 text-slate-600 text-xs rounded-full shadow-sm">{t}</span>
+                                <div className="md:col-span-3">
+                                    {ENCYCLOPEDIA.filter(item => item.id === activeArticle).map(article => (
+                                        <div key={article.id} className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 fade-in min-h-[500px]">
+                                            <h2 className="text-3xl font-extrabold text-slate-800 mb-8 flex items-center gap-3 border-b pb-6"><span>{article.icon}</span> {article.title}</h2>
+                                            
+                                            {article.isSpecial ? (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                    {article.content.map((major, i) => (
+                                                        <div key={i} className="bg-slate-50 rounded-2xl p-6 border border-slate-100 hover:shadow-md transition-shadow">
+                                                            <h3 className="font-bold text-lg text-slate-800 mb-2">{major.title}</h3>
+                                                            <div className="flex flex-wrap gap-1 mb-4">
+                                                                {major.tags.map(t => <span key={t} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded">{t}</span>)}
+                                                            </div>
+                                                            <p className="text-sm text-slate-600 mb-4">{major.desc}</p>
+                                                            <div className="bg-white p-4 rounded-xl text-xs text-slate-500 border border-slate-200 shadow-sm">
+                                                                <strong>核心指引：</strong>{major.points}
+                                                            </div>
+                                                        </div>
                                                     ))}
                                                 </div>
-                                            </div>
+                                            ) : (
+                                                <div className="space-y-10">
+                                                    {article.sections.map((sec, idx) => (
+                                                        <div key={idx}>
+                                                            <h3 className="text-xl font-bold text-blue-700 mb-4 border-l-4 border-blue-600 pl-3">{sec.h}</h3>
+                                                            <ul className="space-y-4 text-slate-600">
+                                                                {sec.list.map((li, i) => (
+                                                                    <li key={i} className="flex items-start gap-2"><span className="text-blue-500 mt-1">•</span><span className="leading-relaxed">{li}</span></li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
+                                    ))}
                                 </div>
                             </div>
                         ) : (
                             <div className="fade-in max-w-3xl mx-auto">
                                 <div className="flex justify-between items-center mb-8">
                                     <div>
-                                        <h2 className="text-2xl font-bold text-slate-800">互助动态广场</h2>
-                                        <p className="text-sm text-slate-500 mt-1">分享面经、吐槽避坑、寻找科研队友</p>
+                                        <h2 className="text-2xl font-extrabold text-slate-800">互助广场 {isAdmin && <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded ml-2">管理员</span>}</h2>
+                                        <p className="text-sm text-slate-500 mt-1">打破专业信息差，互助交流</p>
                                     </div>
-                                    <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-200 transition-all transform hover:-translate-y-0.5 text-sm flex items-center gap-2">
-                                        ➕ 提笔分享
+                                    <button onClick={() => setIsModalOpen(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-full font-bold shadow-lg shadow-blue-200 transition-transform transform hover:-translate-y-1">
+                                        📸 发布帖子
                                     </button>
                                 </div>
                                 
-                                <div className="space-y-5">
-                                    {posts.map(post => (
-                                        <div key={post.id} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover-card">
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-700 font-bold text-lg border border-blue-200">
-                                                        {post.author.charAt(0).toUpperCase()}
-                                                    </div>
+                                <div className="space-y-6">
+                                    {posts.length === 0 ? <div className="text-center py-20 text-slate-400">正在同步云端数据，或暂无帖子...</div> : 
+                                    posts.map(post => {
+                                        // 核心权限判断：管理员，或者这个帖子正是当前用户发的
+                                        const canDelete = isAdmin || (user && post.userId === user.uid);
+
+                                        return (
+                                            <div key={post.id} className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100 hover-card relative">
+                                                {canDelete && (
+                                                    <button onClick={() => handleDelete(post.id)} className="absolute top-6 right-6 text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 px-3 py-1 rounded-lg text-sm font-bold transition">
+                                                        🗑️ 删帖
+                                                    </button>
+                                                )}
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-lg">{post.author?.charAt(0) || '匿'}</div>
                                                     <div>
-                                                        <h4 className="font-bold text-slate-800 leading-snug">{post.title}</h4>
-                                                        <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
-                                                            <span className="font-medium text-slate-500">{post.author}</span>
-                                                            <span>·</span>
-                                                            <span className="bg-slate-100 px-2 py-0.5 rounded text-[10px] uppercase font-bold text-slate-500">
-                                                                {post.major === 'safety' ? '安全工程' : post.major === 'mining' ? '采矿工程' : '地下空间'}
-                                                            </span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-slate-800">{post.author}</span>
+                                                            <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold">{post.major === 'safety' ? '安全工程' : post.major === 'mining' ? '采矿工程' : '城市地下空间工程'}</span>
                                                         </div>
+                                                        <span className="text-xs text-slate-400">{post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleString() : '刚刚'}</span>
                                                     </div>
                                                 </div>
-                                                <span className="text-[11px] font-medium text-slate-300 bg-slate-50 px-2 py-1 rounded-md">{formatDate(post.timestamp)}</span>
+                                                <h4 className="font-bold text-lg text-slate-900 mb-2">{post.title}</h4>
+                                                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap mb-4">{post.content}</p>
+                                                {post.image && (
+                                                    <div className="mb-4 rounded-xl overflow-hidden border border-slate-100 max-w-lg">
+                                                        <img src={post.image} alt="帖子配图" className="w-full h-auto object-cover max-h-80" />
+                                                    </div>
+                                                )}
+                                                
+                                                {/* 互动按钮区 */}
+                                                <div className="pt-4 border-t border-slate-50 flex gap-6">
+                                                    <button onClick={() => handleLike(post.id)} className="text-slate-500 text-sm flex items-center gap-2 hover:text-blue-600 font-semibold">
+                                                        👍 赞同 {post.likes || 0}
+                                                    </button>
+                                                    <button onClick={() => setActiveCommentPostId(activeCommentPostId === post.id ? null : post.id)} className="text-slate-500 text-sm flex items-center gap-2 hover:text-blue-600 font-semibold">
+                                                        💬 评论 {(post.comments && post.comments.length) || 0}
+                                                    </button>
+                                                </div>
+
+                                                {/* 评论展示区 */}
+                                                {post.comments && post.comments.length > 0 && (
+                                                    <div className="comment-section space-y-3 mt-4">
+                                                        {post.comments.map(c => (
+                                                            <div key={c.id} className="text-sm">
+                                                                <span className="font-bold text-slate-700 mr-2">{c.author}:</span>
+                                                                <span className="text-slate-600">{c.text}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {/* 发表评论输入框 */}
+                                                {activeCommentPostId === post.id && (
+                                                    <div className="mt-4 flex flex-col gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                                        <input 
+                                                            placeholder="你的昵称 (选填)" 
+                                                            value={commentAuthor} 
+                                                            onChange={e => setCommentAuthor(e.target.value)} 
+                                                            className="text-xs p-2 rounded-lg border border-slate-200 outline-none w-1/3 min-w-[120px]" 
+                                                        />
+                                                        <div className="flex gap-2">
+                                                            <input 
+                                                                placeholder="写下你的评论..." 
+                                                                value={commentText}
+                                                                onChange={e => setCommentText(e.target.value)}
+                                                                onKeyDown={e => e.key === 'Enter' && submitComment(post.id)}
+                                                                className="flex-grow text-sm p-2 rounded-lg border border-slate-200 outline-none focus:border-blue-400" 
+                                                            />
+                                                            <button onClick={() => submitComment(post.id)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700">
+                                                                发送
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap ml-13">{post.content}</p>
-                                            <div className="mt-5 pt-4 border-t border-slate-50 flex gap-4 ml-13">
-                                                <button onClick={() => handleLike(post.id)} className="text-slate-500 text-sm flex items-center gap-1.5 hover:text-blue-600 transition-colors font-medium bg-slate-50 hover:bg-blue-50 px-3 py-1.5 rounded-lg">
-                                                    👍 <span>有用 ({post.likes})</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
                     </main>
 
-                    {/* Footer - 专属申博署名 */}
-                    <footer className="border-t border-slate-200 bg-white mt-12 py-8">
-                        <div className="max-w-5xl mx-auto px-6 text-center">
-                            <p className="text-slate-400 text-sm font-medium">© 2026 CSU 资源与安全工程学院 学术与职业发展支持平台</p>
-                            <p className="text-slate-300 text-xs mt-2">Designed & Developed by <strong className="text-slate-400">hoilis bai</strong></p>
-                        </div>
-                    </footer>
-
                     {/* 发帖弹窗 */}
                     {isModalOpen && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm fade-in">
-                            <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 sm:p-8">
-                                <h2 className="text-xl font-bold text-slate-800 mb-6">发布新动态</h2>
-                                <form onSubmit={handlePost} className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">一句话标题</label>
-                                        <input name="title" required placeholder="例如：拿到了某车企EHS的Offer，分享面经" className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm" />
-                                    </div>
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm fade-in">
+                            <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden">
+                                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                    <h2 className="text-xl font-extrabold text-slate-800">发布新动态</h2>
+                                    <button onClick={() => {setIsModalOpen(false); setUploadedImg(null);}} className="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+                                </div>
+                                <form onSubmit={handlePost} className="p-6 space-y-5">
+                                    <input name="title" required placeholder="加上吸引人的标题..." className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none font-bold text-lg" />
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">相关专业</label>
-                                            <select name="major" className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm appearance-none">
-                                                <option value="safety">🛡️ 安全工程</option>
-                                                <option value="mining">⛏️ 采矿工程</option>
-                                                <option value="underground">🚇 城市地下空间工程</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">发布署名</label>
-                                            <input name="author" defaultValue="hoilis bai" className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm text-slate-600 font-medium" />
-                                        </div>
+                                        <select name="major" className="p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white outline-none text-sm text-slate-600">
+                                            <option value="safety">🛡️ 安全工程</option>
+                                            <option value="mining">⛏️ 采矿工程</option>
+                                            <option value="underground">🚇 城市地下空间工程</option>
+                                        </select>
+                                        <input name="author" placeholder="你的花名 / 年级" className="p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white outline-none text-sm" />
                                     </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">详细内容</label>
-                                        <textarea name="content" required rows="5" placeholder="分享你的干货、见闻或疑问..." className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm custom-scrollbar resize-none" />
+                                    <div className="relative">
+                                        <textarea ref={contentRef} name="content" required rows="5" placeholder="分享真实的面经、避坑指南或工地日常..." className="w-full p-3 pb-10 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm custom-scrollbar resize-none" />
+                                        <button type="button" onClick={handleAIPolish} disabled={isPolishing} className="absolute bottom-2 right-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded text-xs font-bold transition-colors disabled:opacity-50">
+                                            {isPolishing ? '润色中...' : '✨ AI 智能润色'}
+                                        </button>
                                     </div>
-                                    <div className="flex gap-3 pt-2">
-                                        <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-colors">取消</button>
-                                        <button type="submit" className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-white shadow-lg shadow-blue-200 transition-colors">发布动态</button>
+                                    <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:bg-slate-50 transition-colors">
+                                        {uploadedImg ? (
+                                            <div className="relative inline-block">
+                                                <img src={uploadedImg} alt="Preview" className="img-preview" />
+                                                <button type="button" onClick={() => setUploadedImg(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-md">✖</button>
+                                            </div>
+                                        ) : (
+                                            <label className="cursor-pointer flex flex-col items-center gap-2">
+                                                <span className="text-2xl">📸</span>
+                                                <span className="text-sm font-semibold text-blue-600">点击上传图片 (可选)</span>
+                                                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                                            </label>
+                                        )}
+                                    </div>
+                                    <div className="pt-2">
+                                        <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-white shadow-lg">🚀 发送至云端</button>
                                     </div>
                                 </form>
                             </div>
