@@ -32,80 +32,18 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // 🌟 修正：只有唯一的一份声明
         const { useState, useEffect, useRef } = React;
         
-        // 🌟 强化版链接识别组件
-        const Linkify = (props) => {
-            const Lib = window.Linkify || window.LinkifyReact || window['linkify-react'];
-            if (!Lib) return <React.Fragment>{props.children}</React.Fragment>; 
-            return <Lib {...props}>{props.children}</Lib>;
-        };
+        // 🌟 核心修复：重命名以防撞车，且加入绝对安全的防崩逻辑
+        const SafeLinkify = window.Linkify ? window.Linkify : (props) => <React.Fragment>{props.children}</React.Fragment>;
 
         // --- 知识库数据 ---
         const ENCYCLOPEDIA = [
-            {
-                id: 'majors',
-                title: '三大专业全景解析',
-                icon: '🎓',
-                isSpecial: true,
-                content: [
-                    { title: "🛡️ 安全工程 (Safety Engineering)", tags: ["EHS管理", "ISO体系", "风险评估"], desc: "不仅仅是排查隐患，更是构建企业防御体系。女生极具优势，沟通力强、细心负责。", points: "掌握ISO14001/45001体系运作，熟悉环评职评。避开传统高危行业，优先新能源、汽车制造、电子半导体等。" },
-                    { title: "⛏️ 采矿工程 (Mining Engineering)", tags: ["智能矿山", "三维建模", "自动化调度"], desc: "传统采矿正向机械化、智能化迈进。熟练掌握CAD及Dimine等软件是核心。", points: "深入了解凿岩、爆破、通风等工艺流程。优先考虑大型国企或国际化矿业公司。可向微震监测等前沿技术深造。" },
-                    { title: "🚇 城市地下空间工程 (Underground Space Eng.)", tags: ["盾构施工", "BIM技术", "基坑监测"], desc: "随着城市化进程，地铁、地下管廊蓬勃发展。高度依托大型工程项目现场。", points: "实地观察盾构法、明挖基坑施工。BIM技术在地下管线综合中不可或缺。积累现场经验后向技术负责人转型。" }
-                ]
-            },
-            {
-                id: 'pitfalls',
-                title: '实习与投递避雷指南',
-                icon: '🚨',
-                sections: [
-                    { h: '五大致命雷区', list: [
-                        '❌ 行业方向不明确，盲目海投：石化重HAZOP工艺安全，建筑重脚手架高空作业。',
-                        '❌ 简历堆砌课程，忽视实操：企业宁要查过宿舍消防的，也不要只会背书的。要把课程设计包装成项目。',
-                        '❌ 没提前准备行业知识：面试前必须搜行业典型事故案例，准备特有解决方案。',
-                        '❌ 忽略安全岗特殊要求：必学三大法宝：法规(安法第25条)、预案编制流程、风险评估方法(LEC/HAZOP)。',
-                        '❌ 死等网申，不敢争取内推：坑位少，盯紧校企合作、政府暑期计划及行业社群。'
-                    ]}
-                ]
-            },
-            {
-                id: 'interview',
-                title: '简历与面试通关秘籍',
-                icon: '💬',
-                sections: [
-                    { h: '简历高分写法 (STAR法则)', list: [
-                        '情境+任务+行动+结果。例：“负责储罐区HAZOP分析，发现2处静电隐患并建议增设联锁装置，减少整改成本5W+”。',
-                        '加入数据加分：例如“巡检记录让部门隐患整改率从60%提升至85%”。',
-                        '突出工具技能：AutoCAD画疏散图、气体检测仪使用、Python数据分析。'
-                    ]}
-                ]
-            },
-            {
-                id: 'career',
-                title: '八大就业方向全景图',
-                icon: '🧭',
-                sections: [
-                    { h: '核心就业方向', list: [
-                        '🏭 工厂制造业：安全工程师、EHS工程师（建体系）。',
-                        '🏗️ 建筑与施工：施工安全员、安全监理、BIM安全工程师。',
-                        '⛰️ 矿业及地下工程：矿山安全工程师、爆破安全工程师。',
-                        '🔋 新能源（风口）：锂电池防火防爆设计、储能安全评估。'
-                    ]}
-                ]
-            },
-            {
-                id: 'girls',
-                title: '女生专属就业指南',
-                icon: '👩‍🎓',
-                sections: [
-                    { h: '避开偏见，精准拿Offer', list: [
-                        '🌟 企业EHS管理（主场）：外企/大厂/新能源超爱招！主攻体系专员、职业健康管理师。',
-                        '📊 安全咨询/服务（脑力派）：逻辑清晰文笔好，做安全评价师、EHS咨询顾问。',
-                        '💻 新兴蓝海赛道：智慧安全工程师、ESG专员、互联网安全培训师。'
-                    ]}
-                ]
-            }
+            { id: 'majors', title: '三大专业全景解析', icon: '🎓', isSpecial: true, content: [{ title: "🛡️ 安全工程 (Safety Engineering)", tags: ["EHS管理", "ISO体系", "风险评估"], desc: "不仅仅是排查隐患，更是构建企业防御体系。女生极具优势，沟通力强、细心负责。", points: "掌握ISO14001/45001体系运作，熟悉环评职评。避开传统高危行业，优先新能源、汽车制造、电子半导体等。" },{ title: "⛏️ 采矿工程 (Mining Engineering)", tags: ["智能矿山", "三维建模", "自动化调度"], desc: "传统采矿正向机械化、智能化迈进。熟练掌握CAD及Dimine等软件是核心。", points: "深入了解凿岩、爆破、通风等工艺流程。优先考虑大型国企或国际化矿业公司。可向微震监测等前沿技术深造。" },{ title: "🚇 城市地下空间工程 (Underground Space Eng.)", tags: ["盾构施工", "BIM技术", "基坑监测"], desc: "随着城市化进程，地铁、地下管廊蓬勃发展。高度依托大型工程项目现场。", points: "实地观察盾构法、明挖基坑施工。BIM技术在地下管线综合中不可或缺。积累现场经验后向技术负责人转型。" }] },
+            { id: 'pitfalls', title: '实习与投递避雷指南', icon: '🚨', sections: [{ h: '五大致命雷区', list: ['❌ 行业方向不明确，盲目海投：石化重HAZOP工艺安全，建筑重脚手架高空作业。','❌ 简历堆砌课程，忽视实操：企业宁要查过宿舍消防的，也不要只会背书的。要把课程设计包装成项目。','❌ 没提前准备行业知识：面试前必须搜行业典型事故案例，准备特有解决方案。','❌ 忽略安全岗特殊要求：必学三大法宝：法规(安法第25条)、预案编制流程、风险评估方法(LEC/HAZOP)。','❌ 死等网申，不敢争取内推：坑位少，盯紧校企合作、政府暑期计划及行业社群。']}] },
+            { id: 'interview', title: '简历与面试通关秘籍', icon: '💬', sections: [{ h: '简历高分写法 (STAR法则)', list: ['情境+任务+行动+结果。例：“负责储罐区HAZOP分析，发现2处静电隐患并建议增设联锁装置，减少整改成本5W+”。','加入数据加分：例如“巡检记录让部门隐患整改率从60%提升至85%”。','突出工具技能：AutoCAD画疏散图、气体检测仪使用、Python数据分析。']}] },
+            { id: 'career', title: '八大就业方向全景图', icon: '🧭', sections: [{ h: '核心就业方向', list: ['🏭 工厂制造业：安全工程师、EHS工程师（建体系）。','🏗️ 建筑与施工：施工安全员、安全监理、BIM安全工程师。','⛰️ 矿业及地下工程：矿山安全工程师、爆破安全工程师。','🔋 新能源（风口）：锂电池防火防爆设计、储能安全评估。']}] },
+            { id: 'girls', title: '女生专属就业指南', icon: '👩‍🎓', sections: [{ h: '避开偏见，精准拿Offer', list: ['🌟 企业EHS管理（主场）：外企/大厂/新能源超爱招！主攻体系专员、职业健康管理师。','📊 安全咨询/服务（脑力派）：逻辑清晰文笔好，做安全评价师、EHS咨询顾问。','💻 新兴蓝海赛道：智慧安全工程师、ESG专员、互联网安全培训师。']}] }
         ];
 
         const App = () => {
@@ -306,7 +244,7 @@
                                 <div className="flex justify-between items-center mb-8">
                                     <div>
                                         <h2 className="text-2xl font-extrabold text-slate-800">互助广场 {isAdmin && <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded ml-2">管理员</span>}</h2>
-                                        <p className="text-sm text-slate-500 mt-1">打破专业信息差，支持附件分享</p>
+                                        <p className="text-sm text-slate-500 mt-1">打破专业信息差，支持自动识别网址</p>
                                     </div>
                                     <button onClick={() => setIsModalOpen(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-full font-bold shadow-lg shadow-blue-200 transition-transform transform hover:-translate-y-1">
                                         📸 发布干货帖子
@@ -330,7 +268,7 @@
                                                     <div>
                                                         <div className="flex items-center gap-2">
                                                             <span className="font-bold text-slate-800">{post.author}</span>
-                                                            <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold">{post.major === 'safety' ? '安全工程' : post.major === 'mining' ? '采矿工程' : '城市地下空间工程'}</span>
+                                                            <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold">{post.major === 'safety' ? '安全工程' : post.major === 'mining' ? '采矿工程' : post.major === 'underground' ? '城市地下空间工程' : post.major}</span>
                                                         </div>
                                                         <span className="text-xs text-slate-400">{post.created_at ? new Date(post.created_at).toLocaleString() : '刚刚'}</span>
                                                     </div>
@@ -338,9 +276,9 @@
                                                 <h4 className="font-bold text-lg text-slate-900 mb-3">{post.title}</h4>
                                                 
                                                 <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap mb-4">
-                                                    <Linkify options={{className: 'text-blue-600 hover:underline font-bold', target: '_blank'}}>
+                                                    <SafeLinkify options={{className: 'text-blue-600 hover:underline font-bold', target: '_blank'}}>
                                                         {post.content}
-                                                    </Linkify>
+                                                    </SafeLinkify>
                                                 </p>
                                                 
                                                 {post.image && (
@@ -414,7 +352,7 @@
                                         </select>
                                         <input name="author" placeholder="你的花名 / 年级" className="p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white outline-none text-sm" />
                                     </div>
-                                    <textarea name="content" required rows="4" placeholder="分享面经、避坑指南，或输入链接自动识别..." className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm custom-scrollbar resize-none" />
+                                    <textarea name="content" required rows="4" placeholder="分享面经、避坑指南，直接输入链接如 https://... 会自动变蓝跳转" className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm custom-scrollbar resize-none" />
                                     
                                     <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
                                         <div className="text-xs font-bold text-slate-500 mb-3">附加文件 (仅支持二选一)</div>
