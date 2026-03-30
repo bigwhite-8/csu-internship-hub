@@ -9,6 +9,10 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/linkifyjs@4.1.1/dist/linkify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/linkify-react@4.1.1/dist/linkify-react.min.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body { font-family: 'Inter', -apple-system, sans-serif; background-color: #f8fafc; color: #1e293b; }
@@ -28,7 +32,9 @@
     <div id="root"></div>
 
     <script type="text/babel">
+        // 🌟 修正：从全局变量中提取 Linkify
         const { useState, useEffect, useRef } = React;
+        const Linkify = window.LinkifyReact; 
 
         // --- 知识库数据 ---
         const ENCYCLOPEDIA = [
@@ -101,23 +107,17 @@
             const [activeArticle, setActiveArticle] = useState('majors'); 
             const [posts, setPosts] = useState([]);
             const [isModalOpen, setIsModalOpen] = useState(false);
-            
-            // 附件状态管理 (分离图片和PDF)
             const [uploadedImg, setUploadedImg] = useState(null);
             const [uploadedPdf, setUploadedPdf] = useState(null);
-
-            // 评论及权限管理
             const [activeCommentPostId, setActiveCommentPostId] = useState(null);
             const [commentText, setCommentText] = useState('');
             const [commentAuthor, setCommentAuthor] = useState('');
             const [isAdmin, setIsAdmin] = useState(false);
 
-            // 🌟 1. 初始化 Supabase
             const supabaseUrl = 'https://lxlulmesfgwttwbfdvbz.supabase.co';
             const supabaseKey = 'sb_publishable_MY2XdBRVo8Lo-1cq-7OgAA_JXaPAlQ8';
             const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-            // 🌟 2. 页面加载时自动拉取帖子
             useEffect(() => {
                 fetchPosts();
             }, []);
@@ -136,11 +136,9 @@
                 else if (pwd !== null) { alert("❌ 密码错误"); }
             };
 
-            // 🌟 统一附件上传处理逻辑 🌟
             const handleFileUpload = (e, type) => {
                 const file = e.target.files[0];
                 if (!file) return;
-
                 if (type === 'image') {
                     if(file.size > 5 * 1024 * 1024) return alert('图片不能超过5MB哦！');
                     const reader = new FileReader();
@@ -155,35 +153,26 @@
                             const ctx = canvas.getContext('2d');
                             ctx.drawImage(img, 0, 0, width, height);
                             setUploadedImg(canvas.toDataURL('image/jpeg', 0.6));
-                            setUploadedPdf(null); // 上传图片则清空PDF
+                            setUploadedPdf(null);
                         }
                         img.src = event.target.result;
                     };
                     reader.readAsDataURL(file);
                 } else if (type === 'pdf') {
-                    if(file.size > 800 * 1024) { 
-                        return alert('由于数据库云端限制，PDF附件大小请严格控制在 800KB 以内！\n\n💡 建议：使用WPS或在线工具压缩PDF后再上传。'); 
-                    }
-                    if(file.type !== 'application/pdf') {
-                        return alert('仅支持 .pdf 格式文件！');
-                    }
+                    if(file.size > 800 * 1024) return alert('PDF限800KB以内！');
+                    if(file.type !== 'application/pdf') return alert('仅支持 .pdf 格式！');
                     const reader = new FileReader();
                     reader.onload = (event) => {
-                        setUploadedPdf({
-                            name: file.name,
-                            data: event.target.result
-                        });
+                        setUploadedPdf({ name: file.name, data: event.target.result });
                         setUploadedImg(null); 
                     };
                     reader.readAsDataURL(file);
                 }
             };
 
-            // 🌟 3. 发帖逻辑
             const handlePost = async (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.target);
-                
                 try {
                     const { error } = await supabase.from('posts').insert([{
                         title: formData.get('title'),
@@ -196,17 +185,10 @@
                         comments: []
                     }]);
                     if (error) throw error;
-                    
-                    setIsModalOpen(false);
-                    setUploadedImg(null);
-                    setUploadedPdf(null);
-                    fetchPosts(); // 发帖后刷新列表
-                } catch (error) { 
-                    console.error("发帖失败", error); alert("发帖失败，可能是附件超过限制大小"); 
-                }
+                    setIsModalOpen(false); setUploadedImg(null); setUploadedPdf(null); fetchPosts();
+                } catch (error) { alert("发帖失败，请检查网络或附件大小"); }
             };
 
-            // 🌟 4. 点赞逻辑
             const handleLike = async (id) => {
                 const post = posts.find(p => p.id === id);
                 if (!post) return;
@@ -214,22 +196,15 @@
                 fetchPosts();
             };
 
-            // 🌟 5. 评论逻辑
             const submitComment = async (postId) => {
                 if(!commentText.trim()) return;
                 const post = posts.find(p => p.id === postId);
-                if (!post) return;
-                
                 const newComment = { id: Date.now().toString(), author: commentAuthor || '热心同学', text: commentText };
                 const updatedComments = [...(post.comments || []), newComment];
                 await supabase.from('posts').update({ comments: updatedComments }).eq('id', postId);
-                
-                setCommentText('');
-                setActiveCommentPostId(null);
-                fetchPosts();
+                setCommentText(''); setActiveCommentPostId(null); fetchPosts();
             };
 
-            // 🌟 6. 删帖逻辑
             const handleDelete = async (id) => {
                 if (confirm("⚠️ 确定要永久删除这条帖子吗？")) {
                     await supabase.from('posts').delete().eq('id', id);
@@ -241,7 +216,7 @@
                 <div className="min-h-screen flex flex-col">
                     <header className="glass-nav sticky top-0 z-50">
                         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-                            <div className="flex items-center gap-3 cursor-pointer" onDoubleClick={handleAdminLogin} title="双击进入管理模式">
+                            <div className="flex items-center gap-3 cursor-pointer" onDoubleClick={handleAdminLogin}>
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md ${isAdmin ? 'bg-red-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>
                                     {isAdmin ? '管' : '安'}
                                 </div>
@@ -313,90 +288,73 @@
                                         📸 发布干货帖子
                                     </button>
                                 </div>
-                                
                                 <div className="space-y-6">
-                                    {posts.length === 0 ? <div className="text-center py-20 text-slate-400">正在同步云端数据，或暂无帖子...</div> : 
-                                    posts.map(post => {
-                                        const canDelete = isAdmin;
-
-                                        return (
-                                            <div key={post.id} className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100 hover-card relative">
-                                                {canDelete && (
-                                                    <button onClick={() => handleDelete(post.id)} className="absolute top-6 right-6 text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 px-3 py-1 rounded-lg text-sm font-bold transition">
-                                                        🗑️ 删帖
-                                                    </button>
-                                                )}
-                                                <div className="flex items-center gap-3 mb-4">
-                                                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-lg">{post.author?.charAt(0) || '匿'}</div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-bold text-slate-800">{post.author}</span>
-                                                            <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold">{post.major === 'safety' ? '安全工程' : post.major === 'mining' ? '采矿工程' : '城市地下空间工程'}</span>
-                                                        </div>
-                                                        <span className="text-xs text-slate-400">{post.created_at ? new Date(post.created_at).toLocaleString() : '刚刚'}</span>
+                                    {posts.length === 0 ? <div className="text-center py-20 text-slate-400">正在同步云端数据...</div> : 
+                                    posts.map(post => (
+                                        <div key={post.id} className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100 hover-card relative">
+                                            {isAdmin && (
+                                                <button onClick={() => handleDelete(post.id)} className="absolute top-6 right-6 text-slate-400 hover:text-red-600 bg-slate-50 px-3 py-1 rounded-lg text-sm font-bold">🗑️ 删帖</button>
+                                            )}
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-lg">{post.author?.charAt(0) || '匿'}</div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-slate-800">{post.author}</span>
+                                                        <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold">{post.major === 'safety' ? '安全工程' : post.major === 'mining' ? '采矿工程' : post.major === 'underground' ? '城市地下空间工程' : post.major}</span>
                                                     </div>
+                                                    <span className="text-xs text-slate-400">{post.created_at ? new Date(post.created_at).toLocaleString() : '刚刚'}</span>
                                                 </div>
-                                                <h4 className="font-bold text-lg text-slate-900 mb-3">{post.title}</h4>
-                                                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap mb-4">{post.content}</p>
-                                                
-                                                {/* 🌟 图片渲染 🌟 */}
-                                                {post.image && (
-                                                    <div className="mb-4 rounded-xl overflow-hidden border border-slate-100 max-w-lg">
-                                                        <img src={post.image} alt="配图" className="w-full h-auto object-cover max-h-80" />
-                                                    </div>
-                                                )}
-
-                                                {/* 🌟 PDF在线预览渲染 🌟 */}
-                                                {post.pdf && (
-                                                    <div className="mb-4 rounded-xl overflow-hidden border border-slate-200">
-                                                        <div className="bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700 border-b border-slate-200 flex justify-between items-center">
-                                                            <span className="flex items-center gap-2">📄 附件: {post.pdf.name}</span>
-                                                            <a href={post.pdf.data} download={post.pdf.name} className="text-blue-600 hover:text-blue-800 text-xs font-normal underline">点击下载源文件</a>
-                                                        </div>
-                                                        <iframe src={post.pdf.data} className="pdf-preview-container" title="PDF Preview">
-                                                            <p>您的浏览器不支持内嵌PDF预览，请点击上方按钮下载查看。</p>
-                                                        </iframe>
-                                                    </div>
-                                                )}
-
-                                                <div className="pt-4 border-t border-slate-50 flex gap-6">
-                                                    <button onClick={() => handleLike(post.id)} className="text-slate-500 text-sm flex items-center gap-2 hover:text-blue-600 font-semibold">
-                                                        👍 赞同 {post.likes || 0}
-                                                    </button>
-                                                    <button onClick={() => setActiveCommentPostId(activeCommentPostId === post.id ? null : post.id)} className="text-slate-500 text-sm flex items-center gap-2 hover:text-blue-600 font-semibold">
-                                                        💬 评论 {(post.comments && post.comments.length) || 0}
-                                                    </button>
-                                                </div>
-
-                                                {/* 评论展示与输入区 */}
-                                                {post.comments && post.comments.length > 0 && (
-                                                    <div className="comment-section space-y-3 mt-4">
-                                                        {post.comments.map(c => (
-                                                            <div key={c.id} className="text-sm">
-                                                                <span className="font-bold text-slate-700 mr-2">{c.author}:</span>
-                                                                <span className="text-slate-600">{c.text}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                {activeCommentPostId === post.id && (
-                                                    <div className="mt-4 flex flex-col gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                                        <input placeholder="你的昵称 (选填)" value={commentAuthor} onChange={e => setCommentAuthor(e.target.value)} className="text-xs p-2 rounded-lg border border-slate-200 outline-none w-1/3 min-w-[120px]" />
-                                                        <div className="flex gap-2">
-                                                            <input placeholder="写下你的想法..." value={commentText} onChange={e => setCommentText(e.target.value)} onKeyDown={e => e.key === 'Enter' && submitComment(post.id)} className="flex-grow text-sm p-2 rounded-lg border border-slate-200 outline-none focus:border-blue-400" />
-                                                            <button onClick={() => submitComment(post.id)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700">发送</button>
-                                                        </div>
-                                                    </div>
-                                                )}
                                             </div>
-                                        );
-                                    })}
+                                            <h4 className="font-bold text-lg text-slate-900 mb-3">{post.title}</h4>
+                                            
+                                            {/* 🌟 修正：使用 Linkify 识别链接 */}
+                                            <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap mb-4">
+                                                <Linkify options={{className: 'text-blue-600 hover:underline font-bold', target: '_blank'}}>
+                                                    {post.content}
+                                                </Linkify>
+                                            </p>
+                                            
+                                            {post.image && (
+                                                <div className="mb-4 rounded-xl overflow-hidden border border-slate-100 max-w-lg">
+                                                    <img src={post.image} alt="配图" className="w-full h-auto object-cover max-h-80" />
+                                                </div>
+                                            )}
+                                            {post.pdf && (
+                                                <div className="mb-4 rounded-xl overflow-hidden border border-slate-200">
+                                                    <div className="bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700 border-b flex justify-between items-center">
+                                                        <span className="flex items-center gap-2">📄 附件: {post.pdf.name}</span>
+                                                        <a href={post.pdf.data} download={post.pdf.name} className="text-blue-600 hover:underline text-xs">下载</a>
+                                                    </div>
+                                                    <iframe src={post.pdf.data} className="pdf-preview-container" title="PDF Preview"></iframe>
+                                                </div>
+                                            )}
+                                            <div className="pt-4 border-t border-slate-50 flex gap-6">
+                                                <button onClick={() => handleLike(post.id)} className="text-slate-500 text-sm flex items-center gap-2 hover:text-blue-600 font-semibold">👍 赞同 {post.likes || 0}</button>
+                                                <button onClick={() => setActiveCommentPostId(activeCommentPostId === post.id ? null : post.id)} className="text-slate-500 text-sm flex items-center gap-2 hover:text-blue-600 font-semibold">💬 评论 {(post.comments && post.comments.length) || 0}</button>
+                                            </div>
+                                            {post.comments && post.comments.length > 0 && (
+                                                <div className="comment-section space-y-3 mt-4">
+                                                    {post.comments.map(c => (
+                                                        <div key={c.id} className="text-sm"><span className="font-bold text-slate-700 mr-2">{c.author}:</span><span className="text-slate-600">{c.text}</span></div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {activeCommentPostId === post.id && (
+                                                <div className="mt-4 flex flex-col gap-2 bg-slate-50 p-3 rounded-xl border">
+                                                    <input placeholder="你的昵称" value={commentAuthor} onChange={e => setCommentAuthor(e.target.value)} className="text-xs p-2 rounded-lg border outline-none w-1/3 min-w-[120px]" />
+                                                    <div className="flex gap-2">
+                                                        <input placeholder="写下你的想法..." value={commentText} onChange={e => setCommentText(e.target.value)} onKeyDown={e => e.key === 'Enter' && submitComment(post.id)} className="flex-grow text-sm p-2 rounded-lg border outline-none" />
+                                                        <button onClick={() => submitComment(post.id)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold">发送</button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
                     </main>
 
-                    {/* 发帖弹窗 */}
                     {isModalOpen && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm fade-in">
                             <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden">
@@ -405,46 +363,30 @@
                                     <button onClick={() => {setIsModalOpen(false); setUploadedImg(null); setUploadedPdf(null);}} className="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
                                 </div>
                                 <form onSubmit={handlePost} className="p-6 space-y-5">
-                                    <input name="title" required placeholder="加上吸引人的标题..." className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none font-bold text-lg" />
+                                    <input name="title" required placeholder="标题..." className="w-full p-3 rounded-xl bg-slate-50 border outline-none font-bold text-lg" />
                                     <div className="grid grid-cols-2 gap-4">
-                                        <select name="major" className="p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white outline-none text-sm text-slate-600">
+                                        <select name="major" className="p-3 rounded-xl bg-slate-50 border outline-none text-sm">
                                             <option value="safety">🛡️ 安全工程</option>
                                             <option value="mining">⛏️ 采矿工程</option>
                                             <option value="underground">🚇 城市地下空间工程</option>
                                         </select>
-                                        <input name="author" placeholder="你的花名 / 年级" className="p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white outline-none text-sm" />
+                                        <input name="author" placeholder="你的名字" className="p-3 rounded-xl bg-slate-50 border outline-none text-sm" />
                                     </div>
-                                    <textarea name="content" required rows="4" placeholder="分享面经、避坑指南，或在这里备注附件说明..." className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm custom-scrollbar resize-none" />
-                                    
-                                    {/* 🌟 附件上传选项区 🌟 */}
-                                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                                    <textarea name="content" required rows="4" placeholder="分享干货，支持自动识别链接..." className="w-full p-3 rounded-xl bg-slate-50 border outline-none text-sm resize-none" />
+                                    <div className="bg-slate-50 rounded-xl p-4 border">
                                         <div className="text-xs font-bold text-slate-500 mb-3">附加文件 (仅支持二选一)</div>
                                         <div className="flex gap-4">
-                                            <label className={`flex-1 flex flex-col items-center justify-center p-4 rounded-lg border-2 border-dashed transition-colors cursor-pointer ${uploadedImg ? 'border-blue-500 bg-blue-50' : 'border-slate-300 hover:bg-white'} ${uploadedPdf ? 'opacity-50 pointer-events-none' : ''}`}>
-                                                <span className="text-xl mb-1">📸</span>
-                                                <span className="text-sm font-semibold text-slate-700">上传图片</span>
-                                                {uploadedImg && <span className="text-xs text-blue-600 mt-1">已选择图片</span>}
+                                            <label className={`flex-1 flex flex-col items-center justify-center p-4 rounded-lg border-2 border-dashed cursor-pointer ${uploadedImg ? 'border-blue-500 bg-blue-50' : 'border-slate-300'} ${uploadedPdf ? 'opacity-50 pointer-events-none' : ''}`}>
+                                                <span className="text-xl mb-1">📸</span><span className="text-sm font-semibold">上传图片</span>
                                                 <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'image')} />
                                             </label>
-                                            
-                                            <label className={`flex-1 flex flex-col items-center justify-center p-4 rounded-lg border-2 border-dashed transition-colors cursor-pointer ${uploadedPdf ? 'border-indigo-500 bg-indigo-50' : 'border-slate-300 hover:bg-white'} ${uploadedImg ? 'opacity-50 pointer-events-none' : ''}`}>
-                                                <span className="text-xl mb-1">📄</span>
-                                                <span className="text-sm font-semibold text-slate-700">上传PDF文件</span>
-                                                <span className="text-[10px] text-slate-400 mt-1 text-center">支持简历、面经预览<br/>(限800KB内)</span>
-                                                {uploadedPdf && <span className="text-xs text-indigo-600 mt-1 font-bold">已就绪: {uploadedPdf.name.substring(0,10)}...</span>}
+                                            <label className={`flex-1 flex flex-col items-center justify-center p-4 rounded-lg border-2 border-dashed cursor-pointer ${uploadedPdf ? 'border-indigo-500 bg-indigo-50' : 'border-slate-300'} ${uploadedImg ? 'opacity-50 pointer-events-none' : ''}`}>
+                                                <span className="text-xl mb-1">📄</span><span className="text-sm font-semibold">上传PDF文件</span>
                                                 <input type="file" accept="application/pdf" className="hidden" onChange={(e) => handleFileUpload(e, 'pdf')} />
                                             </label>
                                         </div>
-                                        {(uploadedImg || uploadedPdf) && (
-                                            <div className="text-center mt-3">
-                                                <button type="button" onClick={() => {setUploadedImg(null); setUploadedPdf(null);}} className="text-xs text-red-500 hover:underline">取消附件</button>
-                                            </div>
-                                        )}
                                     </div>
-
-                                    <div className="pt-2">
-                                        <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-white shadow-lg">🚀 发送至广场</button>
-                                    </div>
+                                    <button type="submit" className="w-full py-3 bg-blue-600 rounded-xl font-bold text-white shadow-lg">🚀 发送至广场</button>
                                 </form>
                             </div>
                         </div>
