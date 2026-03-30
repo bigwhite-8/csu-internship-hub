@@ -34,8 +34,14 @@
     <script type="text/babel">
         // 🌟 修正：从全局变量中提取 Linkify
         const { useState, useEffect, useRef } = React;
-        const Linkify = window.LinkifyReact; 
-
+        const { useState, useEffect, useRef } = React;
+        
+        // 🌟 这里的容错处理能彻底解决白屏问题
+        const Linkify = (props) => {
+            const Lib = window.LinkifyReact || window['linkify-react'];
+            if (!Lib) return <span>{props.children}</span>; // 如果库还没加载好，先显示普通文字，防止崩溃
+            return <Lib {...props}>{props.children}</Lib>;
+        };
         // --- 知识库数据 ---
         const ENCYCLOPEDIA = [
             {
