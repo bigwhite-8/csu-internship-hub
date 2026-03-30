@@ -26,12 +26,7 @@
 <body>
     <div id="root"></div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, updateDoc, increment, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
-        window.FB = { initializeApp, getFirestore, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, collection, addDoc, onSnapshot, serverTimestamp, doc, updateDoc, increment, deleteDoc, arrayUnion };
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
@@ -116,53 +111,24 @@
             const [activeCommentPostId, setActiveCommentPostId] = useState(null);
             const [commentText, setCommentText] = useState('');
             const [commentAuthor, setCommentAuthor] = useState('');
-            const [user, setUser] = useState(null);
-            const [db, setDb] = useState(null);
             const [isAdmin, setIsAdmin] = useState(false);
-            const [appId, setAppId] = useState('csu-hub-real');
 
+            // 🌟 1. 初始化 Supabase
+            const supabaseUrl = 'https://lxlulmesfgwttwbfdvbz.supabase.co';
+            const supabaseKey = 'sb_publishable_MY2XdBRVo8Lo-1cq-7OgAA_JXaPAlQ8';
+            const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+            // 🌟 2. 页面加载时自动拉取帖子
             useEffect(() => {
-                if (!window.FB) return;
-                try {
-                    // 🌟 你的专属数据库钥匙已经在这里替换好了！ 🌟
-                    const fbConfig = {
-                        apiKey: "AIzaSyDtXgBL8ZbvVe7Cxgj4p0DPM4qsximov4M",
-                        authDomain: "csu-internship-hub.firebaseapp.com",
-                        projectId: "csu-internship-hub",
-                        storageBucket: "csu-internship-hub.firebasestorage.app",
-                        messagingSenderId: "465448064487",
-                        appId: "1:465448064487:web:27ad23424f1e8cbc169942"
-                    };
-                    const id = 'csu-internship-hub-real';
-                    setAppId(id);
-
-                    const app = window.FB.initializeApp(fbConfig);
-                    const auth = window.FB.getAuth(app);
-                    const firestoreDb = window.FB.getFirestore(app);
-                    setDb(firestoreDb);
-
-                    const initAuth = async () => {
-                        try {
-                            await window.FB.signInAnonymously(auth);
-                        } catch (error) {
-                            console.error("匿名登录失败，请确保在Firebase开启了Anonymous认证", error);
-                        }
-                    };
-                    initAuth();
-
-                    window.FB.onAuthStateChanged(auth, (u) => {
-                        setUser(u);
-                        if(u) loadCloudPosts(firestoreDb, id);
-                    });
-                } catch(e) { console.log("Firebase 初始化失败: ", e); }
+                fetchPosts();
             }, []);
 
-            const loadCloudPosts = (database, currentAppId) => {
-                const postsCol = window.FB.collection(database, 'artifacts', currentAppId, 'public', 'data', 'posts');
-                window.FB.onSnapshot(postsCol, (snapshot) => {
-                    const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setPosts(fetchedPosts.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-                }, (err) => console.error(err));
+            const fetchPosts = async () => {
+                const { data, error } = await supabase
+                    .from('posts')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                if (data) setPosts(data);
             };
 
             const handleAdminLogin = () => {
@@ -214,13 +180,13 @@
                 }
             };
 
+            // 🌟 3. 发帖逻辑
             const handlePost = async (e) => {
                 e.preventDefault();
-                if(!db || !user) { alert("网络连接中，请稍后再试"); return; }
                 const formData = new FormData(e.target);
                 
                 try {
-                    await window.FB.addDoc(window.FB.collection(db, 'artifacts', appId, 'public', 'data', 'posts'), {
+                    const { error } = await supabase.from('posts').insert([{
                         title: formData.get('title'),
                         major: formData.get('major'),
                         author: formData.get('author') || '匿名同学',
@@ -228,20 +194,48 @@
                         image: uploadedImg, 
                         pdf: uploadedPdf,   
                         likes: 0,
-                        userId: user.uid,
-                        comments: [],
-                        createdAt: window.FB.serverTimestamp()
-                    });
+                        comments: []
+                    }]);
+                    if (error) throw error;
+                    
                     setIsModalOpen(false);
                     setUploadedImg(null);
                     setUploadedPdf(null);
-                } catch (error) { console.error("发帖失败", error); alert("发帖失败，可能是附件超过限制大小"); }
+                    fetchPosts(); // 发帖后刷新列表
+                } catch (error) { 
+                    console.error("发帖失败", error); alert("发帖失败，可能是附件超过限制大小"); 
+                }
             };
 
+            // 🌟 4. 点赞逻辑
             const handleLike = async (id) => {
-                if(!db) return;
-                const postRef = window.FB.doc(db, 'artifacts', appId, 'public', 'data', 'posts', id);
-                await window.FB.updateDoc(postRef, { likes: window.FB.increment(1) });
+                const post = posts.find(p => p.id === id);
+                if (!post) return;
+                await supabase.from('posts').update({ likes: (post.likes || 0) + 1 }).eq('id', id);
+                fetchPosts();
+            };
+
+            // 🌟 5. 评论逻辑
+            const submitComment = async (postId) => {
+                if(!commentText.trim()) return;
+                const post = posts.find(p => p.id === postId);
+                if (!post) return;
+                
+                const newComment = { id: Date.now().toString(), author: commentAuthor || '热心同学', text: commentText };
+                const updatedComments = [...(post.comments || []), newComment];
+                await supabase.from('posts').update({ comments: updatedComments }).eq('id', postId);
+                
+                setCommentText('');
+                setActiveCommentPostId(null);
+                fetchPosts();
+            };
+
+            // 🌟 6. 删帖逻辑
+            const handleDelete = async (id) => {
+                if (confirm("⚠️ 确定要永久删除这条帖子吗？")) {
+                    await supabase.from('posts').delete().eq('id', id);
+                    fetchPosts();
+                }
             };
 
             const submitComment = async (postId) => {
@@ -350,7 +344,7 @@
                                 <div className="space-y-6">
                                     {posts.length === 0 ? <div className="text-center py-20 text-slate-400">正在同步云端数据，或暂无帖子...</div> : 
                                     posts.map(post => {
-                                        const canDelete = isAdmin || (user && post.userId === user.uid);
+                                        const canDelete = isAdmin;
 
                                         return (
                                             <div key={post.id} className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100 hover-card relative">
@@ -366,7 +360,7 @@
                                                             <span className="font-bold text-slate-800">{post.author}</span>
                                                             <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold">{post.major === 'safety' ? '安全工程' : post.major === 'mining' ? '采矿工程' : '城市地下空间工程'}</span>
                                                         </div>
-                                                        <span className="text-xs text-slate-400">{post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleString() : '刚刚'}</span>
+                                                        <span className="text-xs text-slate-400">{post.created_at ? new Date(post.created_at).toLocaleString() : '刚刚'}</span>
                                                     </div>
                                                 </div>
                                                 <h4 className="font-bold text-lg text-slate-900 mb-3">{post.title}</h4>
