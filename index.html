@@ -8,6 +8,7 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body { font-family: 'Inter', -apple-system, sans-serif; background-color: #f8fafc; color: #1e293b; }
@@ -25,8 +26,6 @@
 </head>
 <body>
     <div id="root"></div>
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
@@ -235,32 +234,6 @@
                 if (confirm("⚠️ 确定要永久删除这条帖子吗？")) {
                     await supabase.from('posts').delete().eq('id', id);
                     fetchPosts();
-                }
-            };
-
-            const submitComment = async (postId) => {
-                if(!db || !user || !commentText.trim()) return;
-                try {
-                    const postRef = window.FB.doc(db, 'artifacts', appId, 'public', 'data', 'posts', postId);
-                    await window.FB.updateDoc(postRef, {
-                        comments: window.FB.arrayUnion({
-                            id: Date.now().toString(),
-                            author: commentAuthor || '热心同学',
-                            text: commentText,
-                            userId: user.uid,
-                            createdAt: new Date().getTime()
-                        })
-                    });
-                    setCommentText('');
-                    setActiveCommentPostId(null);
-                } catch(e) { console.error("评论失败", e); }
-            };
-
-            const handleDelete = async (id) => {
-                if(!db) return;
-                if (confirm("⚠️ 确定要永久删除这条帖子吗？")) {
-                    try { await window.FB.deleteDoc(window.FB.doc(db, 'artifacts', appId, 'public', 'data', 'posts', id)); } 
-                    catch(e) { console.error("删除失败", e); }
                 }
             };
 
