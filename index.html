@@ -11,27 +11,71 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body { font-family: 'Inter', -apple-system, sans-serif; background-color: #f8fafc; color: #1e293b; }
-        .glass-nav { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border-bottom: 1px solid #e2e8f0; }
-        .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: bold; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        :root {
+            --bg: #f8fafc;
+            --text: #1e293b;
+            --muted: #64748b;
+            --line: #e2e8f0;
+            --brand: #2563eb;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background:
+                radial-gradient(circle at 10% 10%, #dbeafe 0%, transparent 35%),
+                radial-gradient(circle at 90% 0%, #e0e7ff 0%, transparent 30%),
+                var(--bg);
+            color: var(--text);
+        }
+
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .tab-active {
+            border-bottom: 3px solid var(--brand);
+            color: var(--brand);
+            font-weight: 700;
+        }
+
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .hover-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
+
+        .hover-card { transition: all .25s ease; }
+        .hover-card:hover { transform: translateY(-4px); box-shadow: 0 14px 35px -18px rgba(2, 6, 23, .45); }
+
         .fade-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .img-preview { max-height: 200px; object-fit: cover; border-radius: 0.5rem; border: 1px solid #e2e8f0; }
-        .pdf-preview-container { width: 100%; height: 400px; border-radius: 0.5rem; overflow: hidden; border: 1px solid #e2e8f0; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .pdf-preview-container {
+            width: 100%;
+            height: 380px;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        .hero-card {
+            background: linear-gradient(135deg, #1d4ed8, #4338ca 55%, #312e81);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 30px 60px -35px rgba(37, 99, 235, 0.85);
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect } = React;
 
-        // 🌟 原生、稳定、防崩溃的链接识别函数
         const renderContentWithLinks = (text) => {
             if (!text) return null;
             const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -44,21 +88,83 @@
             });
         };
 
-        // --- 知识库数据 ---
         const ENCYCLOPEDIA = [
-            { id: 'majors', title: '三大专业全景解析', icon: '🎓', isSpecial: true, content: [{ title: "🛡️ 安全工程 (Safety Engineering)", tags: ["EHS管理", "ISO体系", "风险评估"], desc: "不仅仅是排查隐患，更是构建企业防御体系。女生极具优势，沟通力强、细心负责。", points: "掌握ISO14001/45001体系运作，熟悉环评职评。避开传统高危行业，优先新能源、汽车制造、电子半导体等。" },{ title: "⛏️ 采矿工程 (Mining Engineering)", tags: ["智能矿山", "三维建模", "自动化调度"], desc: "传统采矿正向机械化、智能化迈进。熟练掌握CAD及Dimine等软件是核心。", points: "深入了解凿岩、爆破、通风等工艺流程。优先考虑大型国企或国际化矿业公司。可向微震监测等前沿技术深造。" },{ title: "🚇 城市地下空间工程 (Underground Space Eng.)", tags: ["盾构施工", "BIM技术", "基坑监测"], desc: "随着城市化进程，地铁、地下管廊蓬勃发展。高度依托大型工程项目现场。", points: "实地观察盾构法、明挖基坑施工。BIM技术在地下管线综合中不可或缺。积累现场经验后向技术负责人转型。" }] },
-            { id: 'pitfalls', title: '实习与投递避雷指南', icon: '🚨', sections: [{ h: '五大致命雷区', list: ['❌ 行业方向不明确，盲目海投：石化重HAZOP工艺安全，建筑重脚手架高空作业。','❌ 简历堆砌课程，忽视实操：企业宁要查过宿舍消防的，也不要只会背书的。要把课程设计包装成项目。','❌ 没提前准备行业知识：面试前必须搜行业典型事故案例，准备特有解决方案。','❌ 忽略安全岗特殊要求：必学三大法宝：法规(安法第25条)、预案编制流程、风险评估方法(LEC/HAZOP)。','❌ 死等网申，不敢争取内推：坑位少，盯紧校企合作、政府暑期计划及行业社群。']}] },
-            { id: 'interview', title: '简历与面试通关秘籍', icon: '💬', sections: [{ h: '简历高分写法 (STAR法则)', list: ['情境+任务+行动+结果。例：“负责储罐区HAZOP分析，发现2处静电隐患并建议增设联锁装置，减少整改成本5W+”。','加入数据加分：例如“巡检记录让部门隐患整改率从60%提升至85%”。','突出工具技能：AutoCAD画疏散图、气体检测仪使用、Python数据分析。']}] },
-            { id: 'career', title: '八大就业方向全景图', icon: '🧭', sections: [{ h: '核心就业方向', list: ['🏭 工厂制造业：安全工程师、EHS工程师（建体系）。','🏗️ 建筑与施工：施工安全员、安全监理、BIM安全工程师。','⛰️ 矿业及地下工程：矿山安全工程师、爆破安全工程师。','🔋 新能源（风口）：锂电池防火防爆设计、储能安全评估。']}] },
-            { id: 'girls', title: '女生专属就业指南', icon: '👩‍🎓', sections: [{ h: '避开偏见，精准拿Offer', list: ['🌟 企业EHS管理（主场）：外企/大厂/新能源超爱招！主攻体系专员、职业健康管理师。','📊 安全咨询/服务（脑力派）：逻辑清晰文笔好，做安全评价师、EHS咨询顾问。','💻 新兴蓝海赛道：智慧安全工程师、ESG专员、互联网安全培训师。']}] }
+            { id: 'majors', title: '三大专业全景解析', icon: '🎓', isSpecial: true, content: [
+                { title: "🛡️ 安全工程", tags: ["EHS管理", "ISO体系", "风险评估"], desc: "核心是把事故预防体系化，企业更看重‘能落地’的人。", points: "优先熟悉ISO14001/45001、双重预防机制、隐患排查闭环。", roadmap: ["大二：法规+案例库", "大三：体系与现场实训", "大四：实习+项目复盘"] },
+                { title: "⛏️ 采矿工程", tags: ["智能矿山", "三维建模", "自动化调度"], desc: "传统矿业正在数字化，软件与现场能力同样重要。", points: "掌握CAD/Dimine、通风爆破流程、基础地压与安全监测。", roadmap: ["打底：工程制图", "进阶：矿山软件", "冲刺：智能矿山项目"] },
+                { title: "🚇 城地空间工程", tags: ["盾构施工", "BIM技术", "监测预警"], desc: "地铁、地下综合管廊、隧道工程需求持续释放。", points: "强化施工工法+监测数据理解，结合BIM协同能力。", roadmap: ["认识工法", "学会监测", "项目协同交付"] }
+            ] },
+            { id: 'pitfalls', title: '实习与投递避雷指南', icon: '🚨', sections: [{ h: '五大高频雷区', list: [
+                '❌ 没有行业方向，盲目海投。先锁定行业再定岗位。',
+                '❌ 简历堆课程不讲成果。至少写出1-2个可量化项目结果。',
+                '❌ 面试前不做企业调研。提前准备企业近3年事故/处罚案例。',
+                '❌ 忽略法规与预案。安全法条款、应急流程必须会说。',
+                '❌ 只等网申不主动内推。积极联系学长、老师、实习带教。'
+            ] }] },
+            { id: 'interview', title: '简历与面试通关秘籍', icon: '💬', sections: [{ h: '高分表达模板（STAR）', list: [
+                '把“我做了什么”改为“我解决了什么问题，带来什么结果”。',
+                '示例：完成储罐区HAZOP分析，识别2项高风险点并推动整改。',
+                '把工具具体化：AutoCAD、Excel透视表、Python数据清洗、PowerBI可视化。',
+                '准备3个可迁移能力案例：沟通协同、复盘改进、现场执行。'
+            ] }] },
+            { id: 'career', title: '就业方向与成长路径', icon: '🧭', sections: [{ h: '八大方向（精选）', list: [
+                '🏭 制造业EHS工程师：体系建设、审核迎检、隐患治理。',
+                '🏗️ 建设/施工安全岗：方案审查、现场风险控制、分包协同。',
+                '⛰️ 矿业与地下工程：安全监测、工艺优化、应急管理。',
+                '🔋 新能源安全：锂电安全、储能评估、消防联动策略。',
+                '📈 安全咨询：评价报告、合规审查、管理咨询。'
+            ] }] },
+            { id: 'girls', title: '女生专项就业建议', icon: '👩‍🎓', sections: [{ h: '优势岗位与策略', list: [
+                '🌟 EHS体系管理：跨部门沟通强、流程推进细致。',
+                '📊 安全咨询与培训：逻辑表达+文档能力优势明显。',
+                '💻 智慧安全/ESG：数据分析、报告体系、数字化运营。',
+                '🎯 建议：尽量争取“平台型企业+导师带教机制”的岗位。'
+            ] }] },
+            { id: 'plan', title: '90天冲刺计划', icon: '📅', sections: [{ h: '从0到Offer的周计划', list: [
+                '第1-2周：行业与岗位定位，完成简历v1+求职看板。',
+                '第3-6周：每周2次模拟面试，沉淀“项目故事库”。',
+                '第7-10周：集中投递+内推跟进，A/B版本简历测试。',
+                '第11-12周：复盘拒信、优化表达，争取最终转化。'
+            ] }] },
+            { id: 'employment', title: '就业板块：校招与社招', icon: '💼', sections: [{ h: '就业准备主线', list: [
+                '简历要区分“实习版”和“校招版”：校招版突出项目深度与可迁移能力。',
+                '建立就业追踪表：公司、岗位、投递时间、流程节点、复盘结论。',
+                '重点跟进秋招提前批、春招补录、国央企招聘公告时间窗。',
+                '面试准备应覆盖：岗位认知、项目追问、行为问题、职业规划。',
+                '最终选择建议对比：成长曲线、导师质量、业务稳定性、城市成本。'
+            ] }] }
         ];
 
+        const RESOURCE_CARDS = [
+            { title: '简历自检清单', icon: '🧾', desc: '30秒检查“岗位匹配度、量化结果、关键词”是否完整。' },
+            { title: '面试题词库', icon: '🎤', desc: '覆盖行为面、专业面、压力面，附标准答题结构。' },
+            { title: '行业案例库', icon: '📚', desc: '收录制造、矿业、施工、新能源的典型事故案例。' }
+        ];
+
+        const CURATED_LINKS = {
+            internship: [
+                { title: '牛客网：实习面经与讨论区', source: '牛客网', url: 'https://www.nowcoder.com/' },
+                { title: '应届生求职网：实习频道', source: '应届生', url: 'https://www.yingjiesheng.com/' },
+                { title: '中南大学就业信息网：实习实践通知', source: '中南大学就业指导中心', url: 'https://career.csu.edu.cn/' }
+            ],
+            employment: [
+                { title: '中南大学就业信息网：招聘信息汇总', source: '中南大学就业指导中心', url: 'https://career.csu.edu.cn/' },
+                { title: '中南大学学生工作网：招聘会资讯', source: '中南大学学生工作网', url: 'https://xgw.csu.edu.cn/' },
+                { title: '应届生求职网：校招频道', source: '应届生', url: 'https://www.yingjiesheng.com/' }
+            ]
+        };
+
         const App = () => {
-            const [view, setView] = useState('guide'); 
-            const [activeArticle, setActiveArticle] = useState('majors'); 
+            const [view, setView] = useState('guide');
+            const [activeArticle, setActiveArticle] = useState('majors');
+            const [guideQuery, setGuideQuery] = useState('');
+            const [postQuery, setPostQuery] = useState('');
             const [posts, setPosts] = useState([]);
+            const [resourceTab, setResourceTab] = useState('internship');
+            const [externalPosts, setExternalPosts] = useState({ internship: [], employment: [] });
+            const [resourceLoading, setResourceLoading] = useState(false);
+            const [resourceUpdatedAt, setResourceUpdatedAt] = useState('');
             const [isModalOpen, setIsModalOpen] = useState(false);
-            
             const [uploadedImg, setUploadedImg] = useState(null);
             const [uploadedPdf, setUploadedPdf] = useState(null);
             const [activeCommentPostId, setActiveCommentPostId] = useState(null);
@@ -72,19 +178,17 @@
 
             useEffect(() => {
                 fetchPosts();
+                fetchExternalResources();
             }, []);
 
             const fetchPosts = async () => {
-                const { data, error } = await supabase
-                    .from('posts')
-                    .select('*')
-                    .order('created_at', { ascending: false });
+                const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
                 if (data) setPosts(data);
             };
 
             const handleAdminLogin = () => {
                 const pwd = prompt("🕵️ 管理员验证，请输入密码：");
-                if (pwd === "csu888") { setIsAdmin(true); alert("✅ 管理员模式已开启！"); } 
+                if (pwd === "csu888") { setIsAdmin(true); alert("✅ 管理员模式已开启！"); }
                 else if (pwd !== null) { alert("❌ 密码错误"); }
             };
 
@@ -99,15 +203,14 @@
                         const img = new Image();
                         img.onload = () => {
                             const canvas = document.createElement('canvas');
-                            const MAX_WIDTH = 800;
+                            const MAX_WIDTH = 900;
                             let width = img.width, height = img.height;
                             if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
                             canvas.width = width; canvas.height = height;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(img, 0, 0, width, height);
-                            setUploadedImg(canvas.toDataURL('image/jpeg', 0.6));
+                            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                            setUploadedImg(canvas.toDataURL('image/jpeg', 0.64));
                             setUploadedPdf(null);
-                        }
+                        };
                         img.src = event.target.result;
                     };
                     reader.readAsDataURL(file);
@@ -116,7 +219,7 @@
                     const reader = new FileReader();
                     reader.onload = (event) => {
                         setUploadedPdf({ name: file.name, data: event.target.result });
-                        setUploadedImg(null); 
+                        setUploadedImg(null);
                     };
                     reader.readAsDataURL(file);
                 }
@@ -127,13 +230,23 @@
                 const formData = new FormData(e.target);
                 try {
                     const { error } = await supabase.from('posts').insert([{
-                        title: formData.get('title'), major: formData.get('major'),
-                        author: formData.get('author') || '匿名同学', content: formData.get('content'),
-                        image: uploadedImg, pdf: uploadedPdf, likes: 0, comments: []
+                        title: formData.get('title'),
+                        major: formData.get('major'),
+                        author: formData.get('author') || '匿名同学',
+                        content: formData.get('content'),
+                        image: uploadedImg,
+                        pdf: uploadedPdf,
+                        likes: 0,
+                        comments: []
                     }]);
                     if (error) throw error;
-                    setIsModalOpen(false); setUploadedImg(null); setUploadedPdf(null); fetchPosts(); 
-                } catch (error) { alert("发帖失败，请检查网络或附件大小"); }
+                    setIsModalOpen(false);
+                    setUploadedImg(null);
+                    setUploadedPdf(null);
+                    fetchPosts();
+                } catch {
+                    alert("发帖失败，请检查网络或附件大小");
+                }
             };
 
             const handleLike = async (id) => {
@@ -150,7 +263,10 @@
                 const newComment = { id: Date.now().toString(), author: commentAuthor || '热心同学', text: commentText };
                 const updatedComments = [...(post.comments || []), newComment];
                 await supabase.from('posts').update({ comments: updatedComments }).eq('id', postId);
-                setCommentText(''); setActiveCommentPostId(null); fetchPosts();
+                setCommentText('');
+                setCommentAuthor('');
+                setActiveCommentPostId(null);
+                fetchPosts();
             };
 
             const handleDelete = async (id) => {
@@ -160,13 +276,67 @@
                 }
             };
 
+            const fetchCsuCenterPosts = async () => {
+                const endpoint = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://career.csu.edu.cn/')}`;
+                const response = await fetch(endpoint);
+                const html = await response.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const links = Array.from(doc.querySelectorAll('a'))
+                    .map(a => ({ title: (a.textContent || '').trim(), href: a.href }))
+                    .filter(item => item.title.length >= 8 && item.href.startsWith('http'))
+                    .filter(item => /(实习|就业|招聘|宣讲|双选|岗位)/.test(item.title))
+                    .slice(0, 12)
+                    .map((item, idx) => ({
+                        id: `csu-${idx}-${item.title.slice(0, 6)}`,
+                        title: item.title,
+                        source: '中南大学就业指导中心',
+                        url: item.href,
+                        kind: /(实习|实践)/.test(item.title) ? 'internship' : 'employment'
+                    }));
+                return links;
+            };
+
+            const fetchExternalResources = async () => {
+                setResourceLoading(true);
+                try {
+                    const csuPosts = await fetchCsuCenterPosts();
+                    const internshipAuto = csuPosts.filter(x => x.kind === 'internship');
+                    const employmentAuto = csuPosts.filter(x => x.kind === 'employment');
+                    setExternalPosts({
+                        internship: [...internshipAuto, ...CURATED_LINKS.internship.map((x, i) => ({ ...x, id: `cur-i-${i}`, kind: 'internship' }))].slice(0, 12),
+                        employment: [...employmentAuto, ...CURATED_LINKS.employment.map((x, i) => ({ ...x, id: `cur-e-${i}`, kind: 'employment' }))].slice(0, 12)
+                    });
+                    setResourceUpdatedAt(new Date().toLocaleString());
+                } catch {
+                    setExternalPosts({
+                        internship: CURATED_LINKS.internship.map((x, i) => ({ ...x, id: `fallback-i-${i}`, kind: 'internship' })),
+                        employment: CURATED_LINKS.employment.map((x, i) => ({ ...x, id: `fallback-e-${i}`, kind: 'employment' }))
+                    });
+                    setResourceUpdatedAt('自动抓取失败，已回退到精选链接');
+                } finally {
+                    setResourceLoading(false);
+                }
+            };
+
+            const filteredArticles = ENCYCLOPEDIA.filter(item =>
+                item.title.toLowerCase().includes(guideQuery.toLowerCase())
+                || (item.sections && item.sections.some(sec => sec.h.includes(guideQuery) || sec.list.join('').includes(guideQuery)))
+            );
+
+            const filteredPosts = posts.filter(post =>
+                !postQuery || [post.title, post.content, post.author, post.major].join(' ').toLowerCase().includes(postQuery.toLowerCase())
+            );
+
             return (
                 <div className="min-h-screen flex flex-col">
                     <header className="glass-nav sticky top-0 z-50">
                         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
                             <div className="flex items-center gap-3 cursor-pointer" onDoubleClick={handleAdminLogin}>
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md ${isAdmin ? 'bg-red-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>{isAdmin ? '管' : '安'}</div>
-                                <h1 className="text-lg font-bold tracking-wide text-slate-800">资安实习全景平台</h1>
+                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md ${isAdmin ? 'bg-red-600' : 'bg-gradient-to-r from-blue-600 to-indigo-600'}`}>{isAdmin ? '管' : '安'}</div>
+                                <div>
+                                    <h1 className="text-lg font-extrabold tracking-wide text-slate-800">资安实习全景平台</h1>
+                                    <p className="text-[11px] text-slate-500 -mt-0.5">CSU Internship Hub</p>
+                                </div>
                             </div>
                             <nav className="flex gap-2 sm:gap-6">
                                 <button onClick={() => setView('guide')} className={`text-sm font-semibold h-16 px-2 ${view === 'guide' ? 'tab-active' : 'text-slate-500 hover:text-blue-600'}`}>百科指南</button>
@@ -177,76 +347,126 @@
 
                     <main className="flex-grow max-w-6xl mx-auto w-full px-4 py-8">
                         {view === 'guide' ? (
-                            <div className="fade-in grid md:grid-cols-4 gap-8">
-                                <div className="md:col-span-1 space-y-2">
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-4 mb-4">核心知识库</h3>
-                                    {ENCYCLOPEDIA.map(item => (
-                                        <button key={item.id} onClick={() => setActiveArticle(item.id)} className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${activeArticle === item.id ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}>
-                                            <span className="text-lg">{item.icon}</span> <span className="font-semibold text-sm">{item.title}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                                <div className="md:col-span-3">
-                                    {ENCYCLOPEDIA.filter(item => item.id === activeArticle).map(article => (
-                                        <div key={article.id} className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 fade-in min-h-[500px]">
-                                            <h2 className="text-3xl font-extrabold text-slate-800 mb-8 flex items-center gap-3 border-b pb-6"><span>{article.icon}</span> {article.title}</h2>
-                                            {article.isSpecial ? (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                                    {article.content.map((major, i) => (
-                                                        <div key={i} className="bg-slate-50 rounded-2xl p-6 border border-slate-100 hover:shadow-md transition-shadow">
-                                                            <h3 className="font-bold text-lg text-slate-800 mb-2">{major.title}</h3>
-                                                            <div className="flex flex-wrap gap-1 mb-4">{major.tags.map(t => <span key={t} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded">{t}</span>)}</div>
-                                                            <p className="text-sm text-slate-600 mb-4">{major.desc}</p>
-                                                            <div className="bg-white p-4 rounded-xl text-xs text-slate-500 border border-slate-200 shadow-sm"><strong>核心指引：</strong>{major.points}</div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-10">
-                                                    {article.sections.map((sec, idx) => (
-                                                        <div key={idx}>
-                                                            <h3 className="text-xl font-bold text-blue-700 mb-4 border-l-4 border-blue-600 pl-3">{sec.h}</h3>
-                                                            <ul className="space-y-4 text-slate-600">{sec.list.map((li, i) => <li key={i} className="flex items-start gap-2"><span className="text-blue-500 mt-1">•</span><span className="leading-relaxed">{li}</span></li>)}</ul>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
+                            <div className="fade-in space-y-6">
+                                <section className="hero-card rounded-3xl p-6 md:p-8 text-white">
+                                    <div className="grid md:grid-cols-3 gap-4 items-center">
+                                        <div className="md:col-span-2">
+                                            <h2 className="text-2xl md:text-3xl font-extrabold leading-tight">一站式补齐实习信息差，<br/>从“迷茫”到“有准备”。</h2>
+                                            <p className="text-blue-100 mt-3 text-sm md:text-base">整合专业路径、面试模板、岗位地图与90天行动计划，帮助你更快拿到心仪Offer。</p>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-3 text-center">
+                                            <div className="bg-white/10 rounded-xl py-3"><p className="text-xl font-bold">6+</p><p className="text-xs text-blue-100">指南主题</p></div>
+                                            <div className="bg-white/10 rounded-xl py-3"><p className="text-xl font-bold">90天</p><p className="text-xs text-blue-100">冲刺计划</p></div>
+                                            <div className="bg-white/10 rounded-xl py-3"><p className="text-xl font-bold">24h</p><p className="text-xs text-blue-100">互助答疑</p></div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section className="grid md:grid-cols-3 gap-4">
+                                    {RESOURCE_CARDS.map(card => (
+                                        <div key={card.title} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover-card">
+                                            <div className="text-2xl mb-2">{card.icon}</div>
+                                            <h3 className="font-bold text-slate-800">{card.title}</h3>
+                                            <p className="text-sm text-slate-500 mt-1 leading-relaxed">{card.desc}</p>
                                         </div>
                                     ))}
+                                </section>
+
+                                <div className="grid md:grid-cols-4 gap-8">
+                                    <div className="md:col-span-1 space-y-3">
+                                        <input value={guideQuery} onChange={e => setGuideQuery(e.target.value)} placeholder="🔎 搜索知识点..." className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:ring-2 focus:ring-blue-400" />
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">核心知识库</h3>
+                                        {(filteredArticles.length === 0 ? ENCYCLOPEDIA : filteredArticles).map(item => (
+                                            <button key={item.id} onClick={() => setActiveArticle(item.id)} className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${activeArticle === item.id ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 bg-white border border-slate-100 hover:bg-slate-50'}`}>
+                                                <span className="text-lg">{item.icon}</span><span className="font-semibold text-sm">{item.title}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="md:col-span-3">
+                                        {ENCYCLOPEDIA.filter(item => item.id === activeArticle).map(article => (
+                                            <div key={article.id} className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100 fade-in min-h-[480px]">
+                                                <h2 className="text-2xl md:text-3xl font-extrabold text-slate-800 mb-6 flex items-center gap-3 border-b pb-4"><span>{article.icon}</span>{article.title}</h2>
+                                                {article.isSpecial ? (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                                        {article.content.map((major, i) => (
+                                                            <div key={i} className="bg-slate-50 rounded-2xl p-5 border border-slate-100 hover:shadow-md transition-shadow">
+                                                                <h3 className="font-bold text-lg text-slate-800 mb-2">{major.title}</h3>
+                                                                <div className="flex flex-wrap gap-1 mb-4">{major.tags.map(t => <span key={t} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded">{t}</span>)}</div>
+                                                                <p className="text-sm text-slate-600 mb-3">{major.desc}</p>
+                                                                <div className="bg-white p-3 rounded-xl text-xs text-slate-500 border border-slate-200 mb-3"><strong>核心指引：</strong>{major.points}</div>
+                                                                <div className="space-y-1.5">{major.roadmap.map(step => <p key={step} className="text-xs text-slate-500">✅ {step}</p>)}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-8">
+                                                        {article.sections.map((sec, idx) => (
+                                                            <div key={idx}>
+                                                                <h3 className="text-lg font-bold text-blue-700 mb-4 border-l-4 border-blue-600 pl-3">{sec.h}</h3>
+                                                                <ul className="space-y-3 text-slate-600">{sec.list.map((li, i) => <li key={i} className="flex items-start gap-2"><span className="text-blue-500 mt-1">•</span><span className="leading-relaxed text-sm">{li}</span></li>)}</ul>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         ) : (
-                            <div className="fade-in max-w-3xl mx-auto">
-                                <div className="flex justify-between items-center mb-8">
-                                    <div>
-                                        <h2 className="text-2xl font-extrabold text-slate-800">互助广场 {isAdmin && <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded ml-2">管理员</span>}</h2>
-                                        <p className="text-sm text-slate-500 mt-1">打破专业信息差，支持自动识别网址</p>
+                            <div className="fade-in grid lg:grid-cols-3 gap-6 items-start">
+                                <div className="lg:col-span-2">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+                                        <div>
+                                            <h2 className="text-2xl font-extrabold text-slate-800">互助广场 {isAdmin && <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded ml-2">管理员</span>}</h2>
+                                            <p className="text-sm text-slate-500 mt-1">经验分享 / 资源互换 / 面试答疑</p>
+                                        </div>
+                                        <button onClick={() => setIsModalOpen(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-full font-bold shadow-lg shadow-blue-200 transition-transform transform hover:-translate-y-1">📸 发布干货帖子</button>
                                     </div>
-                                    <button onClick={() => setIsModalOpen(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-full font-bold shadow-lg shadow-blue-200 transition-transform transform hover:-translate-y-1">📸 发布干货帖子</button>
-                                </div>
-                                <div className="space-y-6">
-                                    {posts.length === 0 ? <div className="text-center py-20 text-slate-400">正在同步云端数据，或暂无帖子...</div> : 
-                                    posts.map(post => {
-                                        return (
+
+                                    <input value={postQuery} onChange={e => setPostQuery(e.target.value)} placeholder="🔎 搜索帖子标题、作者或内容..." className="w-full mb-5 px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:ring-2 focus:ring-blue-400" />
+
+                                    <div className="mb-6 bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+                                        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                                            <h3 className="font-bold text-slate-800">🔗 全网优质内容自动聚合</h3>
+                                            <button onClick={fetchExternalResources} className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600">{resourceLoading ? '同步中...' : '手动刷新'}</button>
+                                        </div>
+                                        <div className="flex gap-2 mb-3">
+                                            <button onClick={() => setResourceTab('internship')} className={`px-3 py-1.5 text-xs rounded-full border ${resourceTab === 'internship' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200'}`}>实习内容</button>
+                                            <button onClick={() => setResourceTab('employment')} className={`px-3 py-1.5 text-xs rounded-full border ${resourceTab === 'employment' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200'}`}>就业内容</button>
+                                        </div>
+                                        <p className="text-[11px] text-slate-400 mb-2">来源包含：中南大学就业指导中心 + 站外优质求职社区（自动抓取 + 精选兜底）</p>
+                                        <div className="space-y-2 max-h-64 overflow-auto custom-scrollbar">
+                                            {(externalPosts[resourceTab] || []).map(item => (
+                                                <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" className="block rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/40 px-3 py-2">
+                                                    <p className="text-sm text-slate-700 font-semibold leading-relaxed">{item.title}</p>
+                                                    <p className="text-[11px] text-slate-400 mt-1">{item.source}</p>
+                                                </a>
+                                            ))}
+                                            {(externalPosts[resourceTab] || []).length === 0 && <p className="text-sm text-slate-400 py-6 text-center">暂无可展示内容，稍后可点击刷新。</p>}
+                                        </div>
+                                        {resourceUpdatedAt && <p className="text-[11px] text-slate-400 mt-2">更新时间：{resourceUpdatedAt}</p>}
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        {filteredPosts.length === 0 ? <div className="text-center bg-white rounded-2xl border border-slate-100 py-16 text-slate-400">暂无匹配内容，换个关键词试试～</div> :
+                                        filteredPosts.map(post => (
                                             <div key={post.id} className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100 hover-card relative">
                                                 {isAdmin && <button onClick={() => handleDelete(post.id)} className="absolute top-6 right-6 text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 px-3 py-1 rounded-lg text-sm font-bold transition">🗑️ 删帖</button>}
                                                 <div className="flex items-center gap-3 mb-4">
                                                     <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-lg">{post.author?.charAt(0) || '匿'}</div>
                                                     <div>
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-2 flex-wrap">
                                                             <span className="font-bold text-slate-800">{post.author}</span>
                                                             <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold">{post.major === 'safety' ? '安全工程' : post.major === 'mining' ? '采矿工程' : post.major === 'underground' ? '城市地下空间工程' : post.major}</span>
                                                         </div>
                                                         <span className="text-xs text-slate-400">{post.created_at ? new Date(post.created_at).toLocaleString() : '刚刚'}</span>
                                                     </div>
                                                 </div>
+
                                                 <h4 className="font-bold text-lg text-slate-900 mb-3">{post.title}</h4>
-                                                
-                                                {/* 🌟 核心：使用稳定的原生解析渲染内容 */}
-                                                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap mb-4">
-                                                    {renderContentWithLinks(post.content)}
-                                                </p>
-                                                
+                                                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap mb-4">{renderContentWithLinks(post.content)}</p>
+
                                                 {post.image && <div className="mb-4 rounded-xl overflow-hidden border border-slate-100 max-w-lg"><img src={post.image} alt="配图" className="w-full h-auto object-cover max-h-80" /></div>}
                                                 {post.pdf && (
                                                     <div className="mb-4 rounded-xl overflow-hidden border border-slate-200">
@@ -257,15 +477,18 @@
                                                         <iframe src={post.pdf.data} className="pdf-preview-container"></iframe>
                                                     </div>
                                                 )}
+
                                                 <div className="pt-4 border-t border-slate-50 flex gap-6">
                                                     <button onClick={() => handleLike(post.id)} className="text-slate-500 text-sm flex items-center gap-2 hover:text-blue-600 font-semibold">👍 赞同 {post.likes || 0}</button>
                                                     <button onClick={() => setActiveCommentPostId(activeCommentPostId === post.id ? null : post.id)} className="text-slate-500 text-sm flex items-center gap-2 hover:text-blue-600 font-semibold">💬 评论 {(post.comments && post.comments.length) || 0}</button>
                                                 </div>
+
                                                 {post.comments && post.comments.length > 0 && (
-                                                    <div className="comment-section space-y-3 mt-4">
+                                                    <div className="space-y-3 mt-4 bg-slate-50 rounded-xl border border-slate-100 p-3">
                                                         {post.comments.map(c => <div key={c.id} className="text-sm"><span className="font-bold text-slate-700 mr-2">{c.author}:</span><span className="text-slate-600">{c.text}</span></div>)}
                                                     </div>
                                                 )}
+
                                                 {activeCommentPostId === post.id && (
                                                     <div className="mt-4 flex flex-col gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
                                                         <input placeholder="你的昵称 (选填)" value={commentAuthor} onChange={e => setCommentAuthor(e.target.value)} className="text-xs p-2 rounded-lg border border-slate-200 outline-none w-1/3 min-w-[120px]" />
@@ -276,9 +499,24 @@
                                                     </div>
                                                 )}
                                             </div>
-                                        );
-                                    })}
+                                        ))}
+                                    </div>
                                 </div>
+
+                                <aside className="space-y-4 lg:sticky lg:top-24">
+                                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                                        <h3 className="font-bold text-slate-800 mb-3">🔥 本周热点</h3>
+                                        <ul className="space-y-2 text-sm text-slate-600">
+                                            <li># 新能源EHS实习投递节奏</li>
+                                            <li># 盾构监测岗位面试题</li>
+                                            <li># 安全工程简历项目化表达</li>
+                                        </ul>
+                                    </div>
+                                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                                        <h3 className="font-bold text-slate-800 mb-3">✍️ 发帖建议模板</h3>
+                                        <p className="text-xs text-slate-500 leading-relaxed">建议结构：背景（什么岗位）→过程（做了什么）→结果（拿到什么反馈）→建议（后人如何避坑）。</p>
+                                    </div>
+                                </aside>
                             </div>
                         )}
                     </main>
@@ -301,7 +539,7 @@
                                         <input name="author" placeholder="你的花名 / 年级" className="p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white outline-none text-sm" />
                                     </div>
                                     <textarea name="content" required rows="4" placeholder="分享面经、避坑指南，直接输入链接如 https://... 会自动变蓝跳转" className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm custom-scrollbar resize-none" />
-                                    
+
                                     <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
                                         <div className="text-xs font-bold text-slate-500 mb-3">附加文件 (仅支持二选一)</div>
                                         <div className="flex gap-4">
@@ -311,7 +549,7 @@
                                                 {uploadedImg && <span className="text-xs text-blue-600 mt-1">已选择图片</span>}
                                                 <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'image')} />
                                             </label>
-                                            
+
                                             <label className={`flex-1 flex flex-col items-center justify-center p-4 rounded-lg border-2 border-dashed transition-colors cursor-pointer ${uploadedPdf ? 'border-indigo-500 bg-indigo-50' : 'border-slate-300 hover:bg-white'} ${uploadedImg ? 'opacity-50 pointer-events-none' : ''}`}>
                                                 <span className="text-xl mb-1">📄</span>
                                                 <span className="text-sm font-semibold text-slate-700">上传PDF文件</span>
@@ -327,9 +565,7 @@
                                         )}
                                     </div>
 
-                                    <div className="pt-2">
-                                        <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-white shadow-lg">🚀 发送至广场</button>
-                                    </div>
+                                    <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-white shadow-lg">🚀 发送至广场</button>
                                 </form>
                             </div>
                         </div>
@@ -338,8 +574,7 @@
             );
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
 </html>
